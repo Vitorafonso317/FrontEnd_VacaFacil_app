@@ -17,6 +17,7 @@ export type User = {
   id: number;
   nome: string;
   email: string;
+  foto_url?: string;
   created_at?: string;
   last_login?: string | null;
 };
@@ -33,6 +34,7 @@ export type Cow = {
   idade?: number;
   peso?: number;
   status_saude: string;
+  foto_url?: string;
   user_id: number;
   created_at?: string;
 };

@@ -124,15 +124,15 @@ const styles = StyleSheet.create({
   
   // Bolha do usuário
   userBubble: {
-    backgroundColor: Colors.chat.userBubble, // Fundo
+    backgroundColor: Colors.primary,         // Verde VacaFácil
     borderBottomRightRadius: Spacing.xs,     // "quebra" do canto (efeito chat)
   },
 
   // Bolha de outro usuário
   otherBubble: {
-    backgroundColor: Colors.chat.otherBubble,
+    backgroundColor: Colors.surfaceVariant,
     borderBottomLeftRadius: Spacing.xs,
-    borderWidth: 1,                           // Borda leve
+    borderWidth: 1,
     borderColor: Colors.borderLight,
   },
   
@@ -153,12 +153,12 @@ const styles = StyleSheet.create({
 
   // Cor da mensagem do usuário
   userMessage: {
-    color: Colors.chat.userText,
+    color: Colors.onPrimary,
   },
 
   // Cor da mensagem de outro usuário
   otherMessage: {
-    color: Colors.chat.otherText,
+    color: Colors.textPrimary,
   },
   
   // Estilo base do timestamp

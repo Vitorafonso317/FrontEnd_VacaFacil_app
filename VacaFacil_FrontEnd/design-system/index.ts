@@ -58,17 +58,16 @@ export * from './animations/interactions';
 
 // Objeto com metadados do design system
 export const DesignSystemInfo = {
-  name: 'MeetStranger Design System', // Nome do sistema
-  version: '1.0.0', // Versão atual (controle de evolução)
-  description: 'Design system focado em comunicação anônima, simplicidade e privacidade', // Propósito
+  name: 'VacaFácil Design System',
+  version: '1.0.0',
+  description: 'Design system voltado para produtores rurais — alta legibilidade, contraste elevado e uso em ambientes externos',
 
-  // Princípios de design que guiam as decisões visuais e UX
   principles: [
-    'Minimalista',                         // Interface limpa
-    'Alto contraste',                      // Boa legibilidade
-    'Foco em leitura e conversação',       // UX voltada para chat
-    'Feedback visual sutil',               // Interações suaves
-    'Animações leves',                     // Performance + fluidez
-    'Interface confortável para longas conversas', // Usabilidade prolongada
+    'Alto contraste para uso no campo (luz forte)',
+    'Simplicidade — foco na tarefa, não na interface',
+    'Áreas de toque generosas (uso com luvas ou mãos sujas)',
+    'Hierarquia visual clara',
+    'Identidade verde — conexão com o agronegócio',
+    'Feedback visual direto e sem ambiguidade',
   ],
 } as const; // Torna o objeto imutável e tipado

@@ -10,9 +10,9 @@ function RootNavigator() {
   useEffect(() => {
     if (loading) return;
 
-    const inAuth = segments[0] === 'auth';
+    const inAuth = segments[0] === '(auth)';
 
-    if (!token && !inAuth) router.replace('/auth/login');
+    if (!token && !inAuth) router.replace('/(auth)/login');
     if (token && inAuth) router.replace('/(tabs)/dashboard');
   }, [token, loading, segments]);
 

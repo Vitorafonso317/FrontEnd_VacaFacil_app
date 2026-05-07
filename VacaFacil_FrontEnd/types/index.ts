@@ -78,3 +78,10 @@ export type FinancialInput = {
   valor: number;
   data: string;
 };
+
+export type FinancialReport = {
+  receitas_total: number;
+  despesas_total: number;
+  saldo: number;
+  registros: FinancialRecord[];
+};

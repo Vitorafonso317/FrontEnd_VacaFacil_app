@@ -60,10 +60,7 @@ export default function Dashboard() {
   // Pega as 2 últimas vacas com produção para a lista de manejo
   const ultimasVacas = stats?.relatorio.registros.slice(0, 2) ?? [];
 
-  // Calcula saldo real: receita prevista - despesa prevista
-  const saldoPrevisto = stats
-    ? stats.financeiro.previsao_receita_proximo_mes - stats.financeiro.previsao_despesa_proximo_mes
-    : 0;
+  const saldoAtual = stats ? stats.financeiro.saldo : 0;
 
   // Variação de produção: compara média com previsão/7
   const variacaoProducao = stats && stats.producao.base_registros > 1
@@ -143,10 +140,10 @@ export default function Dashboard() {
           onPress={() => router.push('/(tabs)/financeiro')}
         >
           <MaterialIcons name="account-balance-wallet" size={24} color={colors.secondary} />
-          <Text style={s.cardLabel}>SALDO PREVISTO</Text>
+          <Text style={s.cardLabel}>SALDO ATUAL</Text>
           {loading
             ? <SkeletonBox width="80%" height={28} />
-            : <Text style={s.valueH2}>{formatCurrency(saldoPrevisto)}</Text>
+            : <Text style={s.valueH2}>{formatCurrency(saldoAtual)}</Text>
           }
         </TouchableOpacity>
 

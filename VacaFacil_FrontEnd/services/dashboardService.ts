@@ -8,8 +8,9 @@ export type DashboardStats = {
     base_registros: number;
   };
   financeiro: {
-    previsao_receita_proximo_mes: number;
-    previsao_despesa_proximo_mes: number;
+    receitas_total: number;
+    despesas_total: number;
+    saldo: number;
   };
   rebanho: {
     total_vacas: number;
@@ -29,7 +30,7 @@ export type DashboardStats = {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [producao, financeiro, rebanho, relatorio] = await Promise.all([
     request<ApiResponse<DashboardStats['producao']>>('/ml/predict-production', { method: 'POST', body: JSON.stringify({}) }),
-    request<ApiResponse<DashboardStats['financeiro']>>('/ml/financial-forecast'),
+    request<ApiResponse<DashboardStats['financeiro']>>('/relatorios/financeiro/json'),
     request<ApiResponse<DashboardStats['rebanho']>>('/ml/analyze-performance'),
     request<ApiResponse<DashboardStats['relatorio']>>('/relatorios/producao/json'),
   ]);

@@ -1,12 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-// Em emulador Android use '10.0.2.2'
-// Em dispositivo físico use o IP da sua máquina: 'http://192.168.X.X:5000'
-const BASE_URL = 'http://10.0.2.2:5000';
+const DEFAULT_PORT = 5000;
+const TIMEOUT_MS = 10_000;
 
-const TIMEOUT_MS = 10_000; // 10 segundos
+function getDefaultBaseUrl() {
+  if (Platform.OS === 'android') return `http://10.0.2.2:${DEFAULT_PORT}`;
+  return `http://localhost:${DEFAULT_PORT}`;
+}
 
-// Token em memória — lido uma vez do disco, depois servido direto daqui
+// Web/iOS simulator: http://localhost:5000
+// Android emulator: http://10.0.2.2:5000
+// Physical device: set EXPO_PUBLIC_API_URL=http://YOUR_LOCAL_IP:5000
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || getDefaultBaseUrl();
+
 let _token: string | null = null;
 
 export function setToken(token: string | null) {
@@ -32,15 +39,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       },
     });
 
-    const json = await response.json();
-    if (!json.success) throw new Error(json.message ?? 'Erro desconhecido');
+    const json = await response.json().catch(() => null);
+    if (!json) throw new Error('Resposta invalida do servidor.');
+    if (response.status === 401) {
+      throw new Error(json.message ?? json.error ?? 'Sessao expirada. Faca login novamente.');
+    }
+    if (!json.success) throw new Error(json.message ?? json.error ?? 'Erro desconhecido');
     return json;
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      throw new Error('Servidor demorou muito para responder. Verifique sua conexão.');
+      throw new Error('Servidor demorou muito para responder. Verifique sua conexao.');
     }
     if (err.message === 'Network request failed') {
-      throw new Error('Sem conexão com o servidor. Verifique se o backend está rodando.');
+      throw new Error('Sem conexao com o servidor. Verifique se o backend esta rodando.');
     }
     throw err;
   } finally {

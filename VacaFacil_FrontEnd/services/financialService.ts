@@ -1,9 +1,5 @@
 import request from './api';
-import type { ApiResponse, PaginatedResponse, FinancialRecord, FinancialInput, FinancialReport } from '../types';
-
-export function getFinancialReport() {
-  return request<ApiResponse<FinancialReport>>('/relatorios/financeiro/json');
-}
+import type { ApiResponse, PaginatedResponse, FinancialRecord, FinancialInput } from '../types';
 
 export function getReceitas(page = 1, limit = 10) {
   return request<PaginatedResponse<FinancialRecord>>(`/financeiro/receitas?page=${page}&limit=${limit}`);

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setToken } from '../services/api';
+import { setToken, setUnauthorizedHandler } from '../services/api';
 import type { User } from '../types';
 
 type AuthState = {
@@ -19,12 +19,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    setUnauthorizedHandler(signOut);
+  }, []);
+
   // Lê do disco UMA vez na inicialização e coloca em memória
   useEffect(() => {
     AsyncStorage.multiGet(['token', 'user']).then(([t, u]) => {
       const savedToken = t[1] ?? null;
       const savedUser = u[1] ? JSON.parse(u[1]) : null;
-      setToken(savedToken);      // coloca em memória no api.ts
+      setToken(savedToken);
       setTokenState(savedToken);
       setUser(savedUser);
       setLoading(false);

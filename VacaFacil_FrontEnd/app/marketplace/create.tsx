@@ -72,7 +72,7 @@ export default function CriarAnuncio() {
             style={s.input} value={form.titulo} onChangeText={v => set('titulo', v)}
             placeholder="Ex: Vaca Holandesa — 4 anos"
             placeholderTextColor={colors.textTertiary}
-            autoCapitalize="sentences"
+            autoCapitalize="sentences" maxLength={255}
           />
         </View>
 
@@ -83,9 +83,7 @@ export default function CriarAnuncio() {
             value={form.descricao} onChangeText={v => set('descricao', v)}
             placeholder="Descreva o produto, condições, histórico..."
             placeholderTextColor={colors.textTertiary}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
+            multiline numberOfLines={3} textAlignVertical="top" maxLength={500}
           />
         </View>
 
@@ -123,8 +121,7 @@ export default function CriarAnuncio() {
             style={s.input} value={form.contato} onChangeText={v => set('contato', v)}
             placeholder="Ex: 5531999999999 ou email@exemplo.com"
             placeholderTextColor={colors.textTertiary}
-            autoCapitalize="none"
-            keyboardType="email-address"
+            autoCapitalize="none" keyboardType="email-address" maxLength={255}
           />
         </View>
 

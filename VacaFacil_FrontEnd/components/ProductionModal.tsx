@@ -68,6 +68,10 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
       Alert.alert('Data inválida', 'Use o formato AAAA-MM-DD. Ex: 2025-06-15');
       return;
     }
+    if (data > todayISO()) {
+      Alert.alert('Data inválida', 'Não é possível registrar produção para datas futuras.');
+      return;
+    }
     setSaving(true);
     try {
       await createProduction({

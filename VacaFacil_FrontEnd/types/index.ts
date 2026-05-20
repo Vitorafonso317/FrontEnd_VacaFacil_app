@@ -108,6 +108,7 @@ export type DashboardStats = {
   financeiro: {
     previsao_receita_proximo_mes: number;
     previsao_despesa_proximo_mes: number;
+    saldo?: number;
   };
   rebanho: {
     total_vacas: number;

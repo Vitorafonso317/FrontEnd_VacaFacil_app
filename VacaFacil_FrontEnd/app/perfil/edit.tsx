@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import request from '../../services/api';
-import type { ApiResponse, User } from '../../types';
+import type { ApiResponse } from '../../types';
 import { colors } from '../../constants/colors';
 
 export default function EditarPerfil() {
@@ -17,19 +17,22 @@ export default function EditarPerfil() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [loading, setLoading] = useState(false);
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   async function handleSave() {
     const nomeTrim = nome.trim();
-    const emailTrim = email.trim();
+    const emailTrim = email.trim().toLowerCase();
     if (!nomeTrim) return Alert.alert('Atenção', 'O nome é obrigatório.');
     if (!emailTrim) return Alert.alert('Atenção', 'O e-mail é obrigatório.');
+    if (!EMAIL_REGEX.test(emailTrim)) return Alert.alert('E-mail inválido', 'Digite um e-mail válido.');
 
     setLoading(true);
     try {
-      const res = await request<ApiResponse<User>>('/users/me', {
+      await request<ApiResponse<unknown>>('/users/me', {
         method: 'PUT',
         body: JSON.stringify({ nome: nomeTrim, email: emailTrim }),
       });
-      updateUser({ nome: res.data.nome, email: res.data.email });
+      updateUser({ nome: nomeTrim, email: emailTrim });
       Alert.alert('Sucesso', 'Perfil atualizado!', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e: any) {
       Alert.alert('Erro ao salvar', e.message);
@@ -58,7 +61,7 @@ export default function EditarPerfil() {
             onChangeText={setNome}
             placeholder="Seu nome completo"
             placeholderTextColor={colors.textTertiary}
-            autoCapitalize="words"
+            autoCapitalize="words" maxLength={255}
           />
         </View>
 
@@ -70,9 +73,8 @@ export default function EditarPerfil() {
             onChangeText={setEmail}
             placeholder="seu@email.com"
             placeholderTextColor={colors.textTertiary}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
+            keyboardType="email-address" autoCapitalize="none"
+            autoCorrect={false} maxLength={255}
           />
         </View>
 

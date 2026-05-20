@@ -16,11 +16,15 @@ export default function Login() {
   const { signIn } = useAuth();
   const router = useRouter();
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   async function handleLogin() {
-    if (!email || !password) return Alert.alert('Preencha todos os campos');
+    const emailNorm = email.trim().toLowerCase();
+    if (!emailNorm || !password) return Alert.alert('Preencha todos os campos');
+    if (!EMAIL_REGEX.test(emailNorm)) return Alert.alert('E-mail inválido', 'Digite um e-mail válido.');
     setLoading(true);
     try {
-      const res = await login(email, password);
+      const res = await login(emailNorm, password);
       await signIn(res.data.token, res.data.user);
     } catch (e: any) {
       Alert.alert('Erro', e.message);

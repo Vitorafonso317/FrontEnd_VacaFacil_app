@@ -47,7 +47,7 @@ export default function CowForm({ title, subtitle, submitLabel, form, loading, o
           <TextInput
             style={s.input} value={form.nome} onChangeText={v => onChange('nome', v)}
             placeholder="Ex: Mimosa" placeholderTextColor={colors.textTertiary}
-            autoCapitalize="words"
+            autoCapitalize="words" maxLength={255}
           />
         </View>
 
@@ -55,7 +55,7 @@ export default function CowForm({ title, subtitle, submitLabel, form, loading, o
           <Text style={s.label}>RAÇA</Text>
           <TextInput
             style={s.input} value={form.raca} onChangeText={v => onChange('raca', v)}
-            placeholder="Ex: Holandesa" placeholderTextColor={colors.textTertiary}
+            placeholder="Ex: Holandesa" placeholderTextColor={colors.textTertiary} maxLength={255}
           />
         </View>
 

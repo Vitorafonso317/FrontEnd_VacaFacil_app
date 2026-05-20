@@ -1,9 +1,9 @@
 import { BASE_URL } from '../constants/config';
 
-const TIMEOUT_MS = 10_000; // 10 segundos
+const TIMEOUT_MS = 30_000;
 
-// Token em memória — lido uma vez do disco, depois servido direto daqui
 let _token: string | null = null;
+let _onUnauthorized: (() => void) | null = null;
 
 export function setToken(token: string | null) {
   _token = token;
@@ -11,6 +11,10 @@ export function setToken(token: string | null) {
 
 export function getToken() {
   return _token;
+}
+
+export function setUnauthorizedHandler(fn: () => void) {
+  _onUnauthorized = fn;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -29,11 +33,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     });
 
     const json = await response.json();
+    if (response.status === 401) {
+      _onUnauthorized?.();
+      throw new Error(json.message ?? 'Sessão expirada. Faça login novamente.');
+    }
     if (!json.success) throw new Error(json.message ?? 'Erro desconhecido');
     return json;
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      throw new Error('Servidor demorou muito para responder. Verifique sua conexão.');
+      throw new Error('O servidor demorou para responder (pode estar acordando). Tente novamente em alguns segundos.');
     }
     if (err.message === 'Network request failed') {
       throw new Error('Sem conexão com o servidor. Verifique se o backend está rodando.');

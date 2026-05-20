@@ -21,9 +21,14 @@ export default function Register() {
   const { signIn } = useAuth();
   const router = useRouter();
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   async function handleRegister() {
-    if (!name.trim() || !email.trim() || !password || !confirmPassword)
+    const emailNorm = email.trim().toLowerCase();
+    if (!name.trim() || !emailNorm || !password || !confirmPassword)
       return Alert.alert('Campos obrigatórios', 'Preencha todos os campos.');
+    if (!EMAIL_REGEX.test(emailNorm))
+      return Alert.alert('E-mail inválido', 'Digite um e-mail válido.');
     if (password !== confirmPassword)
       return Alert.alert('Senhas diferentes', 'As senhas não coincidem.');
     if (password.length < 6)
@@ -33,8 +38,8 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(name.trim(), email.trim().toLowerCase(), password);
-      const res = await login(email.trim().toLowerCase(), password);
+      await register(name.trim(), emailNorm, password);
+      const res = await login(emailNorm, password);
       await signIn(res.data.token, res.data.user);
     } catch (e: any) {
       Alert.alert('Erro ao cadastrar', e.message);
@@ -62,7 +67,7 @@ export default function Register() {
           <View style={s.field}>
             <Text style={s.label}>NOME</Text>
             <TextInput style={s.input} placeholder="Ex: João Silva" placeholderTextColor={colors.textTertiary}
-              value={name} onChangeText={setName} autoCapitalize="words" />
+              value={name} onChangeText={setName} autoCapitalize="words" maxLength={255} />
           </View>
 
           <View style={s.field}>

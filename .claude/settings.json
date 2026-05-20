@@ -4,7 +4,13 @@
       "PowerShell(ls \"c:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\FrontEnd-VacaFacil\\\\FrontEnd_VacaFacil_app\\\\VacaFacil_FrontEnd\\\\node_modules\" | Where-Object { $_.Name -match \"picker\" } | Select-Object Name)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\FrontEnd-VacaFacil\\\\FrontEnd_VacaFacil_app\\\\VacaFacil_FrontEnd\" | Where-Object { $_.Name -ne \"node_modules\" } | Format-Table Name, PSIsContainer)",
       "Read(//c/Users/vitor/OneDomo/Documentos/FrontEnd-VacaFacil/FrontEnd_VacaFacil_app/VacaFacil_FrontEnd/utils/**)",
-      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\FrontEnd-VacaFacil\\\\FrontEnd_VacaFacil_app\\\\VacaFacil_FrontEnd\\\\styles\" -Recurse -File | Select-Object FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"C:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\FrontEnd-VacaFacil\\\\FrontEnd_VacaFacil_app\\\\VacaFacil_FrontEnd\\\\\"\\), \"\" })"
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\FrontEnd-VacaFacil\\\\FrontEnd_VacaFacil_app\\\\VacaFacil_FrontEnd\\\\styles\" -Recurse -File | Select-Object FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"C:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\FrontEnd-VacaFacil\\\\FrontEnd_VacaFacil_app\\\\VacaFacil_FrontEnd\\\\\"\\), \"\" })",
+      "PowerShell($env:PATH += \";C:\\\\Program Files\\\\Git\\\\bin;C:\\\\Program Files\\\\Git\\\\cmd\"; Set-Location \"C:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\FrontEnd-VacaFacil\\\\FrontEnd_VacaFacil_app\"; git diff HEAD --stat)",
+      "PowerShell(\\(Get-Command git -ErrorAction SilentlyContinue\\).Source; \\(Get-Command git.exe -ErrorAction SilentlyContinue\\).Source)",
+      "Read(//c/Program Files/**)",
+      "PowerShell(ls \"C:\\\\Program Files\\\\\")",
+      "Read(//c/Users/vitor/AppData/Local/GitHubDesktop/**)",
+      "Read(//c/Users/vitor/**)"
     ]
   }
 }

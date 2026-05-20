@@ -1,40 +1,48 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet,
+  Alert, StyleSheet, RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { getReceitas, getDespesas, deleteReceita, deleteDespesa } from '../../services/financialService';
+import { getReceitas, getDespesas } from '../../services/financialService';
 import type { FinancialRecord } from '../../types';
 import { colors } from '../../constants/colors';
+import { formatCurrency } from '../../utils';
+import TransactionModal from '../../components/TransactionModal';
 
 type Tab = 'receitas' | 'despesas';
 
-const ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  receitas: 'local-shipping',
-  despesas: 'grass',
-};
-
 export default function Financeiro() {
   const [tab, setTab] = useState<Tab>('receitas');
-  const [records, setRecords] = useState<FinancialRecord[]>([]);
+  const [receitas, setReceitas] = useState<FinancialRecord[]>([]);
+  const [despesas, setDespesas] = useState<FinancialRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  async function load(t: Tab = tab) {
-    setLoading(true);
+  async function load(isRefresh = false) {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const res = t === 'receitas' ? await getReceitas() : await getDespesas();
-      setRecords(res.data);
+      const [r, d] = await Promise.all([
+        getReceitas(1, 50),
+        getDespesas(1, 50),
+      ]);
+      setReceitas(r.data);
+      setDespesas(d.data);
     } catch (e: any) {
       Alert.alert('Erro', e.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
-  useEffect(() => { load(tab); }, [tab]);
+  useEffect(() => { load(); }, []);
 
-  const total = records.reduce((acc, r) => acc + (r.valor ?? 0), 0);
+  const totalReceitas = receitas.reduce((acc, r) => acc + (r.valor ?? 0), 0);
+  const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor ?? 0), 0);
+  const saldo = totalReceitas - totalDespesas;
+  const records = tab === 'receitas' ? receitas : despesas;
   const isReceita = tab === 'receitas';
 
   return (
@@ -43,10 +51,19 @@ export default function Financeiro() {
       <View style={s.bentoSection}>
         <View style={[s.card, s.cardFull]}>
           <Text style={s.labelCap}>SALDO ATUAL</Text>
-          <Text style={s.saldo}>R$ 45.280,00</Text>
+          {loading
+            ? <ActivityIndicator color={colors.primary} />
+            : <Text style={[s.saldo, saldo < 0 && { color: colors.error }]}>{formatCurrency(saldo)}</Text>
+          }
           <View style={s.trendRow}>
-            <MaterialIcons name="trending-up" size={16} color={colors.primary} />
-            <Text style={s.trendText}>+12% este mês</Text>
+            <MaterialIcons
+              name={saldo >= 0 ? 'trending-up' : 'trending-down'}
+              size={16}
+              color={saldo >= 0 ? colors.primary : colors.error}
+            />
+            <Text style={[s.trendText, saldo < 0 && { color: colors.error }]}>
+              {saldo >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
+            </Text>
           </View>
         </View>
         <View style={s.bentoRow}>
@@ -55,14 +72,20 @@ export default function Financeiro() {
               <MaterialIcons name="arrow-downward" size={18} color={colors.primary} />
               <Text style={[s.labelCap, { color: colors.primary }]}>ENTRADAS</Text>
             </View>
-            <Text style={s.valueH2}>R$ 62.400</Text>
+            {loading
+              ? <ActivityIndicator color={colors.primary} />
+              : <Text style={s.valueH2}>{formatCurrency(totalReceitas)}</Text>
+            }
           </View>
           <View style={[s.card, s.cardHalf]}>
             <View style={s.cardIconRow}>
               <MaterialIcons name="arrow-upward" size={18} color={colors.error} />
               <Text style={[s.labelCap, { color: colors.error }]}>SAÍDAS</Text>
             </View>
-            <Text style={s.valueH2}>R$ 17.120</Text>
+            {loading
+              ? <ActivityIndicator color={colors.error} />
+              : <Text style={s.valueH2}>{formatCurrency(totalDespesas)}</Text>
+            }
           </View>
         </View>
       </View>
@@ -90,6 +113,14 @@ export default function Financeiro() {
           data={records}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={s.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
           renderItem={({ item }) => (
             <View style={s.transCard}>
               <View style={[s.transIcon, { backgroundColor: isReceita ? colors.onPrimaryContainer : colors.errorContainer }]}>
@@ -104,7 +135,7 @@ export default function Financeiro() {
                 <Text style={s.transSub}>{item.data}</Text>
               </View>
               <Text style={[s.transValue, { color: isReceita ? colors.primary : colors.error }]}>
-                {isReceita ? '+' : '-'} R$ {item.valor?.toFixed(2)}
+                {isReceita ? '+' : '-'} {formatCurrency(item.valor)}
               </Text>
             </View>
           )}
@@ -119,10 +150,16 @@ export default function Financeiro() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={s.fab} activeOpacity={0.85}>
+      <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={() => setModalVisible(true)}>
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.fabText}>Nova Transação</Text>
       </TouchableOpacity>
+
+      <TransactionModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSaved={load}
+      />
     </View>
   );
 }

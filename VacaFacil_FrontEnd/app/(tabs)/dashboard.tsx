@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { getDashboardStats, type DashboardStats } from '../../services/dashboardService';
 import { colors } from '../../constants/colors';
+import { formatCurrency } from '../../utils';
 
 const DAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
 
@@ -21,10 +22,6 @@ function buildBarHeights(mediaDiaria: number): number[] {
   const all = [...past, ...forecast];
   const max = Math.max(...all);
   return all.map(v => Math.round((v / max) * 90) + 10); // normaliza entre 10–100
-}
-
-function formatCurrency(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function SkeletonBox({ width, height }: { width: number | string; height: number }) {
@@ -179,10 +176,20 @@ export default function Dashboard() {
           <View style={s.chartLoading}>
             <ActivityIndicator color={colors.primary} />
           </View>
+        ) : stats && stats.producao.base_registros === 0 ? (
+          <View style={s.chartEmpty}>
+            <MaterialIcons name="auto-awesome" size={32} color={colors.borderLight} />
+            <Text style={s.chartEmptyText}>
+              Registre a produção das suas vacas para ativar a previsão inteligente
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/producao')}>
+              <Text style={s.emptyLink}>Registrar agora</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <>
             <View style={s.chart}>
-              {(barHeights ?? [40, 45, 42, 50, 55, 58, 56]).map((h, i) => (
+              {(barHeights ?? []).map((h, i) => (
                 <View key={i} style={s.barWrapper}>
                   {i >= 4 && <Text style={s.barLabel}>IA</Text>}
                   <View style={[
@@ -284,6 +291,8 @@ const s = StyleSheet.create({
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
   chartLoading: { height: 80, alignItems: 'center', justifyContent: 'center' },
+  chartEmpty: { alignItems: 'center', paddingVertical: 24, gap: 8 },
+  chartEmptyText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   chart: { flexDirection: 'row', alignItems: 'flex-end', height: 72, gap: 4 },
   barWrapper: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
   bar: { width: '100%', borderTopLeftRadius: 3, borderTopRightRadius: 3 },

@@ -7,9 +7,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { getCow, deleteCow } from '../../services/cattleService';
+import { getProduction } from '../../services/productionService';
 import { uploadFotoVaca } from '../../services/uploadService';
 import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
+import ProductionModal from '../../components/ProductionModal';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   saudavel:   { label: 'Ativa',       color: colors.primaryContainer,  bg: colors.onPrimaryContainer },
@@ -23,11 +25,36 @@ export default function CowDetail() {
   const [cow, setCow] = useState<Cow | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [avgLitros, setAvgLitros] = useState<number | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
 
+  async function loadProduction(cowId: number) {
+    try {
+      const prodRes = await getProduction(1, 200);
+      const cowRecords = prodRes.data.filter(r => r.vaca_id === cowId);
+      if (cowRecords.length > 0) {
+        const total = cowRecords.reduce((acc, r) => acc + (r.litros ?? 0), 0);
+        setAvgLitros(total / cowRecords.length);
+      } else {
+        setAvgLitros(null);
+      }
+    } catch {
+      // silencioso — média simplesmente não atualiza
+    }
+  }
+
   useEffect(() => {
-    getCow(Number(id))
-      .then(res => setCow(res.data))
+    const cowId = Number(id);
+    Promise.all([getCow(cowId), getProduction(1, 200)])
+      .then(([cowRes, prodRes]) => {
+        setCow(cowRes.data);
+        const cowRecords = prodRes.data.filter(r => r.vaca_id === cowId);
+        if (cowRecords.length > 0) {
+          const total = cowRecords.reduce((acc, r) => acc + (r.litros ?? 0), 0);
+          setAvgLitros(total / cowRecords.length);
+        }
+      })
       .catch(e => Alert.alert('Erro', e.message))
       .finally(() => setLoading(false));
   }, [id]);
@@ -45,7 +72,6 @@ export default function CowDetail() {
   }
 
   async function pickAndUpload(source: 'camera' | 'gallery') {
-    // Pede permissão
     const permission = source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -63,7 +89,7 @@ export default function CowDetail() {
     const result = source === 'camera'
       ? await ImagePicker.launchCameraAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.7,        // comprime para 70% — reduz tamanho do upload
+          quality: 0.7,
           allowsEditing: true,
           aspect: [4, 3],
         })
@@ -136,7 +162,6 @@ export default function CowDetail() {
             </View>
           )}
 
-          {/* Overlay do botão de câmera */}
           <View style={s.cameraOverlay}>
             {uploading ? (
               <ActivityIndicator color="#fff" size="small" />
@@ -146,7 +171,6 @@ export default function CowDetail() {
           </View>
         </TouchableOpacity>
 
-        {/* Badge de status */}
         <View style={[s.statusBadge, { backgroundColor: st.bg }]}>
           <MaterialIcons name="check-circle" size={14} color={st.color} />
           <Text style={[s.statusText, { color: st.color }]}>{st.label}</Text>
@@ -166,7 +190,11 @@ export default function CowDetail() {
 
       {/* Ações rápidas */}
       <View style={s.actionsGrid}>
-        <TouchableOpacity style={s.actionPrimary} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={s.actionPrimary}
+          activeOpacity={0.85}
+          onPress={() => setModalVisible(true)}
+        >
           <MaterialIcons name="add-chart" size={28} color={colors.onPrimary} />
           <Text style={s.actionPrimaryText}>Registrar Leite</Text>
         </TouchableOpacity>
@@ -186,20 +214,18 @@ export default function CowDetail() {
           <View style={s.statHeader}>
             <View>
               <Text style={s.statLabel}>Produção Média</Text>
-              <Text style={s.statValueLarge}>28.5L <Text style={s.statUnit}>/dia</Text></Text>
+              <Text style={s.statValueLarge}>
+                {avgLitros !== null ? `${avgLitros.toFixed(1)}L` : '—'}
+                {avgLitros !== null && <Text style={s.statUnit}> /dia</Text>}
+              </Text>
             </View>
             <View style={s.statIcon}>
               <MaterialIcons name="show-chart" size={22} color={colors.primary} />
             </View>
           </View>
-          <View style={s.miniChart}>
-            {[40, 60, 55, 85, 70, 100, 80].map((h, i) => (
-              <View key={i} style={[s.miniBar, {
-                height: h * 0.6,
-                backgroundColor: i === 5 ? colors.primaryContainer : colors.onPrimaryContainer,
-              }]} />
-            ))}
-          </View>
+          {avgLitros === null && (
+            <Text style={s.statEmptyHint}>Registre produções para ver a média.</Text>
+          )}
         </View>
 
         <View style={s.statCard}>
@@ -213,26 +239,13 @@ export default function CowDetail() {
         </View>
       </View>
 
-      {/* Histórico */}
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>Histórico Recente</Text>
-        {[
-          { icon: 'vaccines',        bg: colors.errorContainer,          color: colors.error,             title: 'Vacinação Aftosa',  sub: '12 Out 2024' },
-          { icon: 'pets',            bg: colors.secondaryContainer,      color: colors.onSecondaryContainer, title: 'Cio Detectado',  sub: '05 Out 2024' },
-          { icon: 'monitor-weight',  bg: colors.surfaceContainerHighest, color: colors.textSecondary,     title: 'Pesagem Mensal',    sub: '01 Out 2024' },
-        ].map((item, i) => (
-          <TouchableOpacity key={i} style={s.historyItem} activeOpacity={0.8}>
-            <View style={[s.historyIcon, { backgroundColor: item.bg }]}>
-              <MaterialIcons name={item.icon as any} size={22} color={item.color} />
-            </View>
-            <View style={s.historyInfo}>
-              <Text style={s.historyTitle}>{item.title}</Text>
-              <Text style={s.historySub}>{item.sub}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={22} color={colors.border} />
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ProductionModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSaved={() => loadProduction(Number(id))}
+        preSelectedCowId={Number(id)}
+        preSelectedCowName={cow.nome}
+      />
     </ScrollView>
   );
 }
@@ -308,18 +321,5 @@ const s = StyleSheet.create({
   statValueLarge: { fontSize: 28, fontWeight: '700', color: colors.primary, letterSpacing: -0.5 },
   statUnit: { fontSize: 14, fontWeight: '400', color: colors.border },
   statValueMd: { fontSize: 22, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  miniChart: { flexDirection: 'row', alignItems: 'flex-end', height: 40, gap: 3, marginTop: 4 },
-  miniBar: { flex: 1, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
-
-  section: { marginHorizontal: 20, marginTop: 24, gap: 10 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.text, letterSpacing: -0.3, marginBottom: 2 },
-  historyItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight, padding: 12,
-  },
-  historyIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  historyInfo: { flex: 1 },
-  historyTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
-  historySub: { fontSize: 12, color: colors.border, marginTop: 2 },
+  statEmptyHint: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
 });

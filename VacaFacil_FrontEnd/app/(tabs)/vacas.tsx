@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet, TextInput, Image,
+  Alert, StyleSheet, TextInput, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { getCows, deleteCow } from '../../services/cattleService';
 import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
+import ProductionModal from '../../components/ProductionModal';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   saudavel: { bg: colors.onPrimaryContainer, text: colors.primaryContainer, label: 'Ativa' },
@@ -21,13 +22,25 @@ function getStatus(status: string) {
   return STATUS_STYLE[status?.toLowerCase()] ?? STATUS_STYLE['ativa'];
 }
 
+type StatusFilter = 'todos' | 'saudavel' | 'seca' | 'tratamento';
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: 'todos', label: 'Todas' },
+  { key: 'saudavel', label: 'Ativas' },
+  { key: 'seca', label: 'Secas' },
+  { key: 'tratamento', label: 'Tratamento' },
+];
+
 export default function Vacas() {
   const [cows, setCows] = useState<Cow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
+  const [quickCow, setQuickCow] = useState<Cow | null>(null);
   const router = useRouter();
 
-  async function load() {
+  async function load(isRefresh = false) {
+    if (isRefresh) setRefreshing(true);
     try {
       const res = await getCows();
       setCows(res.data);
@@ -35,6 +48,7 @@ export default function Vacas() {
       Alert.alert('Erro', e.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -56,10 +70,14 @@ export default function Vacas() {
     ]);
   }
 
-  const filtered = cows.filter(c =>
-    c.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    c.raca?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = cows.filter(c => {
+    const matchText = c.nome?.toLowerCase().includes(search.toLowerCase()) ||
+      c.raca?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'todos' ||
+      c.status_saude?.toLowerCase() === statusFilter ||
+      (statusFilter === 'saudavel' && c.status_saude?.toLowerCase() === 'ativa');
+    return matchText && matchStatus;
+  });
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
 
@@ -83,19 +101,42 @@ export default function Vacas() {
             onChangeText={setSearch}
           />
         </View>
-        <TouchableOpacity style={s.filterBtn}>
-          <MaterialIcons name="filter-list" size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
+      </View>
+
+      {/* Filtros por status */}
+      <View style={s.chipsRow}>
+        {STATUS_FILTERS.map(f => (
+          <TouchableOpacity
+            key={f.key}
+            style={[s.chip, statusFilter === f.key && s.chipActive]}
+            onPress={() => setStatusFilter(f.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[s.chipText, statusFilter === f.key && s.chipTextActive]}>{f.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <FlatList
         data={filtered}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={s.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => load(true)}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
         renderItem={({ item }) => {
           const st = getStatus(item.status_saude);
           return (
-            <TouchableOpacity style={s.card} activeOpacity={0.8} onPress={() => router.push(`/vacas/${item.id}`)}>
+            <TouchableOpacity
+              style={s.card}
+              activeOpacity={0.8}
+              onPress={() => router.push(`/vacas/${item.id}`)}
+            >
               <View style={s.cowImage}>
                 <MaterialIcons name="agriculture" size={32} color={colors.primary} />
               </View>
@@ -109,6 +150,16 @@ export default function Vacas() {
                 <Text style={s.cowMeta}><Text style={s.metaBold}>Raça:</Text> {item.raca ?? '—'}</Text>
                 <Text style={s.cowMeta}><Text style={s.metaBold}>Idade:</Text> {item.idade ?? '—'}</Text>
               </View>
+
+              {/* Registro rápido de leite */}
+              <TouchableOpacity
+                style={s.quickBtn}
+                onPress={() => setQuickCow(item)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialIcons name="water-drop" size={20} color={colors.onPrimary} />
+              </TouchableOpacity>
+
               <MaterialIcons name="chevron-right" size={22} color={colors.border} />
             </TouchableOpacity>
           );
@@ -127,6 +178,15 @@ export default function Vacas() {
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.addBtnText}>Adicionar Vaca</Text>
       </TouchableOpacity>
+
+      {/* Modal de registro rápido de leite */}
+      <ProductionModal
+        visible={!!quickCow}
+        onClose={() => setQuickCow(null)}
+        onSaved={() => setQuickCow(null)}
+        preSelectedCowId={quickCow?.id}
+        preSelectedCowName={quickCow?.nome}
+      />
     </View>
   );
 }
@@ -137,24 +197,29 @@ const s = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
   subtitle: { fontSize: 16, color: colors.textSecondary },
 
-  searchRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 16 },
+  searchRow: { paddingHorizontal: 20, marginBottom: 10 },
   searchBox: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: colors.surfaceContainerLow, borderRadius: 8,
     borderWidth: 1, borderColor: colors.borderLight, paddingHorizontal: 12, height: 48,
   },
   searchInput: { flex: 1, fontSize: 16, color: colors.text },
-  filterBtn: {
-    width: 48, height: 48, backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8, borderWidth: 1, borderColor: colors.borderLight,
-    alignItems: 'center', justifyContent: 'center',
+
+  chipsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 12 },
+  chip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+    borderWidth: 1, borderColor: colors.borderLight,
+    backgroundColor: colors.surfaceContainerLow,
   },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  chipTextActive: { color: colors.onPrimary },
 
   list: { paddingHorizontal: 20, gap: 12 },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', padding: 12,
+    borderRadius: 8, borderWidth: 1, borderColor: colors.borderLight, padding: 12,
   },
   cowImage: {
     width: 72, height: 72, borderRadius: 8,
@@ -168,6 +233,11 @@ const s = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700' },
   cowMeta: { fontSize: 14, color: colors.textSecondary },
   metaBold: { fontWeight: '700' },
+
+  quickBtn: {
+    width: 40, height: 40, backgroundColor: colors.primary,
+    borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+  },
 
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 16, color: colors.textSecondary },

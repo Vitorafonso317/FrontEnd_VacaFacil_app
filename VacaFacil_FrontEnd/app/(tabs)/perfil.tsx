@@ -1,19 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  Image, ActivityIndicator, Alert, Platform, ActionSheetIOS,
+  Image, ActivityIndicator, Alert, Platform, ActionSheetIOS, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
 import { uploadFotoUsuario } from '../../services/uploadService';
+import { getDashboardStats, type DashboardStats } from '../../services/dashboardService';
 import { colors } from '../../constants/colors';
 
 export default function Perfil() {
-  const { user, signOut, updateUser } = useAuth();
   const router = useRouter();
+  const { user, signOut, updateUser } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    getDashboardStats()
+      .then(setStats)
+      .catch(() => {});
+  }, []);
 
   async function pickAndUpload(source: 'camera' | 'gallery') {
     const permission = source === 'camera'
@@ -35,7 +43,7 @@ export default function Perfil() {
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           quality: 0.7,
           allowsEditing: true,
-          aspect: [1, 1], // quadrado para avatar
+          aspect: [1, 1],
         })
       : await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -49,7 +57,7 @@ export default function Perfil() {
     setUploading(true);
     try {
       const fotoUrl = await uploadFotoUsuario(result.assets[0].uri);
-      updateUser({ foto_url: fotoUrl }); // atualiza em memória e AsyncStorage
+      updateUser({ foto_url: fotoUrl });
     } catch (e: any) {
       Alert.alert('Erro ao enviar foto', e.message);
     } finally {
@@ -72,6 +80,20 @@ export default function Perfil() {
     }
   }
 
+  function handleSupport() {
+    Linking.openURL('mailto:suporte@vacafacil.com.br?subject=Suporte%20VacaFácil').catch(() => {
+      Alert.alert(
+        'Suporte Técnico',
+        'Para dúvidas ou problemas, entre em contato:\n\nsuporte@vacafacil.com.br',
+        [{ text: 'OK' }]
+      );
+    });
+  }
+
+  const totalVacas = stats?.rebanho.total_vacas;
+  const mediaDiaria = stats?.producao.media_diaria;
+  const isPremium = user?.plano === 'ouro' || user?.plano === 'diamante';
+
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       {/* Avatar */}
@@ -90,7 +112,6 @@ export default function Perfil() {
             </View>
           )}
 
-          {/* Botão câmera */}
           <View style={s.cameraBtn}>
             {uploading
               ? <ActivityIndicator size="small" color={colors.onPrimary} />
@@ -102,7 +123,7 @@ export default function Perfil() {
         <Text style={s.userName}>{user?.nome ?? 'Produtor'}</Text>
         <View style={s.farmRow}>
           <MaterialIcons name="eco" size={16} color={colors.textSecondary} />
-          <Text style={s.farmName}>Fazenda Vale Verde</Text>
+          <Text style={s.farmName}>Produtor Rural</Text>
         </View>
         <Text style={s.userEmail}>{user?.email ?? ''}</Text>
       </View>
@@ -112,25 +133,46 @@ export default function Perfil() {
         <View style={s.bentoCard}>
           <MaterialIcons name="pets" size={22} color={colors.primary} />
           <Text style={s.bentoLabel}>TOTAL DE VACAS</Text>
-          <Text style={s.bentoValue}>142</Text>
+          <Text style={s.bentoValue}>
+            {totalVacas !== undefined ? String(totalVacas) : '—'}
+          </Text>
         </View>
         <View style={s.bentoCard}>
           <MaterialIcons name="water-drop" size={22} color={colors.tertiary} />
-          <Text style={s.bentoLabel}>PRODUÇÃO DIÁRIA</Text>
-          <Text style={s.bentoValue}>2.4k L</Text>
+          <Text style={s.bentoLabel}>PRODUÇÃO MÉDIA</Text>
+          <Text style={s.bentoValue}>
+            {mediaDiaria !== undefined ? `${mediaDiaria.toFixed(1)}L` : '—'}
+          </Text>
         </View>
-        <View style={[s.bentoCardFull, s.premiumCard]}>
+        <View style={[s.bentoCardFull, isPremium ? s.premiumCard : s.freeCard]}>
           <View>
-            <Text style={s.premiumLabel}>ASSINATURA PREMIUM</Text>
-            <Text style={s.premiumTitle}>Plano Ouro Ativo</Text>
+            <Text style={isPremium ? s.premiumLabel : s.freeLabel}>ASSINATURA</Text>
+            <Text style={isPremium ? s.premiumTitle : s.freeTitle}>
+              {isPremium ? 'Plano Ouro Ativo' : 'Plano Gratuito'}
+            </Text>
           </View>
-          <MaterialIcons name="verified" size={28} color={colors.primary} />
+          {isPremium
+            ? <MaterialIcons name="verified" size={28} color={colors.primary} />
+            : (
+              <TouchableOpacity
+                style={s.upgradeBtn}
+                onPress={() => Alert.alert('Upgrade', 'Funcionalidade de assinatura em breve!', [{ text: 'OK' }])}
+                activeOpacity={0.8}
+              >
+                <Text style={s.upgradeBtnText}>Fazer Upgrade</Text>
+              </TouchableOpacity>
+            )
+          }
         </View>
       </View>
 
       {/* Ações */}
       <View style={s.actions}>
-        <TouchableOpacity style={s.btnPrimary} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={s.btnPrimary}
+          activeOpacity={0.85}
+          onPress={() => router.push('/perfil/edit')}
+        >
           <View style={s.btnContent}>
             <MaterialIcons name="edit" size={22} color={colors.onPrimary} />
             <Text style={s.btnPrimaryText}>Editar Perfil</Text>
@@ -138,7 +180,11 @@ export default function Perfil() {
           <MaterialIcons name="chevron-right" size={22} color={colors.onPrimary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.btnSecondary} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={s.btnSecondary}
+          activeOpacity={0.85}
+          onPress={() => router.push('/perfil/settings')}
+        >
           <View style={s.btnContent}>
             <MaterialIcons name="settings" size={22} color={colors.secondary} />
             <Text style={s.btnSecondaryText}>Configurações</Text>
@@ -146,7 +192,7 @@ export default function Perfil() {
           <MaterialIcons name="chevron-right" size={22} color={colors.secondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.btnOutline} activeOpacity={0.85} onPress={() => router.push('/_dev/showcase')}>
+        <TouchableOpacity style={s.btnOutline} activeOpacity={0.85} onPress={handleSupport}>
           <View style={s.btnContent}>
             <MaterialIcons name="help" size={22} color={colors.text} />
             <Text style={s.btnOutlineText}>Suporte Técnico</Text>
@@ -208,6 +254,19 @@ const s = StyleSheet.create({
   },
   premiumLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
   premiumTitle: { fontSize: 16, fontWeight: '600', color: colors.primary, marginTop: 2 },
+
+  freeCard: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: colors.surfaceContainerLowest,
+    borderColor: colors.borderLight, padding: 16, borderRadius: 8, borderWidth: 1,
+  },
+  freeLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
+  freeTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 2 },
+  upgradeBtn: {
+    backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 999,
+  },
+  upgradeBtnText: { fontSize: 13, fontWeight: '700', color: colors.onPrimary },
 
   actions: { gap: 12 },
   btnContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },

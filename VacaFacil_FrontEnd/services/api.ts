@@ -1,8 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Em emulador Android use '10.0.2.2'
-// Em dispositivo físico use o IP da sua máquina: 'http://192.168.X.X:5000'
-const BASE_URL = 'http://10.0.2.2:5000';
+import { BASE_URL } from '../constants/config';
 
 const TIMEOUT_MS = 10_000; // 10 segundos
 

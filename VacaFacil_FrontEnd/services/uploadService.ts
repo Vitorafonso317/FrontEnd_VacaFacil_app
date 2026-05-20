@@ -1,7 +1,5 @@
 import { getToken } from './api';
-
-// Em emulador Android use '10.0.2.2', em dispositivo físico use o IP da sua máquina
-const BASE_URL = 'http://10.0.2.2:5000';
+import { BASE_URL } from '../constants/config';
 
 async function uploadImagem(endpoint: string, imageUri: string): Promise<string> {
   const token = getToken();

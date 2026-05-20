@@ -59,6 +59,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="marketplace"
+        options={{
+          title: 'Mercado',
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="storefront" size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="perfil"
         options={{
           title: 'Perfil',

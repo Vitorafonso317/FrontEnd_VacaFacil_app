@@ -1,30 +1,7 @@
 import request from './api';
-import type { ApiResponse } from '../types';
+import type { ApiResponse, DashboardStats } from '../types';
 
-export type DashboardStats = {
-  producao: {
-    media_diaria: number;
-    previsao_proximos_7_dias: number;
-    base_registros: number;
-  };
-  financeiro: {
-    previsao_receita_proximo_mes: number;
-    previsao_despesa_proximo_mes: number;
-  };
-  rebanho: {
-    total_vacas: number;
-  };
-  relatorio: {
-    total_litros: number;
-    registros: Array<{
-      id: number;
-      vaca_id: number;
-      vaca_nome: string;
-      data: string;
-      litros: number;
-    }>;
-  };
-};
+export type { DashboardStats };
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [producao, financeiro, rebanho, relatorio] = await Promise.all([

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
   Alert, StyleSheet, TextInput, RefreshControl,
@@ -40,13 +40,13 @@ export default function Producao() {
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  const filtered = records.filter(r => {
+  const filtered = useMemo(() => records.filter(r => {
     const nome = cowMap[r.vaca_id] ?? '';
     return nome.toLowerCase().includes(search.toLowerCase()) || r.data?.includes(search);
-  });
+  }), [records, cowMap, search]);
 
-  const totalMensal = records.reduce((acc, r) => acc + (r.litros ?? 0), 0);
-  const vacasUnicas = new Set(records.map(r => r.vaca_id)).size;
+  const totalMensal = useMemo(() => records.reduce((acc, r) => acc + (r.litros ?? 0), 0), [records]);
+  const vacasUnicas = useMemo(() => new Set(records.map(r => r.vaca_id)).size, [records]);
   const mediaPorVaca = vacasUnicas > 0 ? (totalMensal / vacasUnicas).toFixed(1) : '0';
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
@@ -95,6 +95,9 @@ export default function Producao() {
         data={filtered}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={s.list}
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
+        windowSize={7}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

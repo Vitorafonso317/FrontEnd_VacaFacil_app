@@ -44,6 +44,9 @@ export default function Marketplace() {
         data={items}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={s.list}
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
+        windowSize={7}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

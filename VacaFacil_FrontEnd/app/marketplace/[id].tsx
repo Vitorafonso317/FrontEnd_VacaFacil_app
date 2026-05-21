@@ -7,6 +7,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import request from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import type { ApiResponse, MarketplaceItem } from '../../types';
 import { colors } from '../../constants/colors';
 import { formatCurrency } from '../../utils';
@@ -14,9 +15,22 @@ import { formatCurrency } from '../../utils';
 const { width: SCREEN_W } = Dimensions.get('window');
 const IMG_H = 260;
 
+function detectContact(contato: string): { type: 'whatsapp' | 'email' | 'unknown'; url: string } {
+  const clean = contato.trim();
+  const digits = clean.replace(/\D/g, '');
+  if (digits.length >= 10 && digits.length <= 15) {
+    return { type: 'whatsapp', url: `https://wa.me/${digits}` };
+  }
+  if (clean.includes('@')) {
+    return { type: 'email', url: `mailto:${clean}` };
+  }
+  return { type: 'unknown', url: '' };
+}
+
 export default function MarketplaceDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const [item, setItem] = useState<MarketplaceItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
@@ -32,7 +46,7 @@ export default function MarketplaceDetail() {
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
   if (!item) return (
     <View style={s.screen}>
-      <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+      <TouchableOpacity style={s.backBtnSimple} onPress={() => router.back()}>
         <MaterialIcons name="arrow-back" size={28} color={colors.primary} />
       </TouchableOpacity>
       <Text style={s.notFound}>Anúncio não encontrado.</Text>
@@ -41,20 +55,37 @@ export default function MarketplaceDetail() {
 
   const fotos = item.fotos ?? [];
   const hasImages = fotos.length > 0;
+  const isOwner = user?.id === item.user_id;
+  const contact = item.contato ? detectContact(item.contato) : null;
 
   function handleContact() {
-    const c = item!.contato?.trim();
-    if (!c) {
+    if (!contact || !item?.contato) {
       Alert.alert('Contato', 'O vendedor não informou dados de contato.');
       return;
     }
-    const isWhatsApp = /^\d{10,15}$/.test(c.replace(/\D/g, ''));
-    const url = isWhatsApp
-      ? `https://wa.me/${c.replace(/\D/g, '')}`
-      : `mailto:${c}`;
-    Linking.openURL(url).catch(() =>
+    if (contact.type === 'unknown') {
+      Alert.alert('Contato', item.contato);
+      return;
+    }
+    Linking.openURL(contact.url).catch(() =>
       Alert.alert('Erro', 'Não foi possível abrir o contato.')
     );
+  }
+
+  function handleDelete() {
+    Alert.alert('Excluir anúncio', 'Deseja remover este anúncio? Esta ação não pode ser desfeita.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive', onPress: async () => {
+          try {
+            await request(`/marketplace/${id}`, { method: 'DELETE' });
+            router.back();
+          } catch (e: any) {
+            Alert.alert('Erro', e.message);
+          }
+        },
+      },
+    ]);
   }
 
   return (
@@ -78,11 +109,17 @@ export default function MarketplaceDetail() {
               <Image source={{ uri }} style={s.galleryImg} resizeMode="cover" />
             )}
           />
-          {/* Back button sobre imagem */}
           <TouchableOpacity style={s.backBtnOverlay} onPress={() => router.back()}>
             <MaterialIcons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          {/* Dots */}
+          {isOwner && (
+            <TouchableOpacity
+              style={s.editBtnOverlay}
+              onPress={() => router.push(`/marketplace/edit/${id}`)}
+            >
+              <MaterialIcons name="edit" size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
           {fotos.length > 1 && (
             <View style={s.dots}>
               {fotos.map((_, i) => (
@@ -92,27 +129,44 @@ export default function MarketplaceDetail() {
           )}
         </View>
       ) : (
-        /* Sem foto — header simples */
-        <View style={s.header}>
-          <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+        <View style={s.headerBar}>
+          <TouchableOpacity style={s.backBtnSimple} onPress={() => router.back()}>
             <MaterialIcons name="arrow-back" size={28} color={colors.primary} />
           </TouchableOpacity>
-          <View style={s.iconBox}>
-            <MaterialIcons name="storefront" size={52} color={colors.primary} />
-          </View>
+          {isOwner && (
+            <View style={s.ownerActions}>
+              <TouchableOpacity
+                style={s.editBtn}
+                onPress={() => router.push(`/marketplace/edit/${id}`)}
+              >
+                <MaterialIcons name="edit" size={18} color={colors.primary} />
+                <Text style={s.editBtnText}>Editar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.deleteBtn} onPress={handleDelete}>
+                <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
 
       <View style={s.body}>
-        {/* Título e categoria */}
+        {/* Título + ações do dono (quando tem foto, ficam no overlay) */}
         <View style={s.titleRow}>
-          <Text style={s.title}>{item.titulo}</Text>
-          {item.categoria ? (
-            <View style={s.badge}>
-              <Text style={s.badgeText}>{item.categoria.toUpperCase()}</Text>
-            </View>
-          ) : null}
+          <Text style={s.title} numberOfLines={3}>{item.titulo}</Text>
+          {hasImages && isOwner && (
+            <TouchableOpacity style={s.deleteBtn} onPress={handleDelete}>
+              <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+            </TouchableOpacity>
+          )}
         </View>
+
+        {item.categoria ? (
+          <View style={s.badge}>
+            <MaterialIcons name="agriculture" size={12} color={colors.primaryContainer} />
+            <Text style={s.badgeText}>{item.categoria.toUpperCase()}</Text>
+          </View>
+        ) : null}
 
         {/* Preço */}
         <View style={s.priceCard}>
@@ -128,9 +182,13 @@ export default function MarketplaceDetail() {
           </View>
         ) : null}
 
-        {/* Thumbnails se tiver mais de 1 foto */}
+        {/* Thumbnails */}
         {fotos.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.thumbRow} contentContainerStyle={{ gap: 8 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
             {fotos.map((uri, i) => (
               <TouchableOpacity
                 key={i}
@@ -149,11 +207,31 @@ export default function MarketplaceDetail() {
           </ScrollView>
         )}
 
-        {/* Botão de contato */}
-        <TouchableOpacity style={s.contactBtn} activeOpacity={0.85} onPress={handleContact}>
-          <MaterialIcons name="chat" size={22} color={colors.onPrimary} />
-          <Text style={s.contactBtnText}>Entrar em Contato</Text>
-        </TouchableOpacity>
+        {/* Contato */}
+        {contact && contact.type === 'whatsapp' ? (
+          <TouchableOpacity style={s.whatsappBtn} activeOpacity={0.85} onPress={handleContact}>
+            <MaterialIcons name="chat" size={22} color="#fff" />
+            <Text style={s.whatsappBtnText}>Falar no WhatsApp</Text>
+          </TouchableOpacity>
+        ) : contact && contact.type === 'email' ? (
+          <TouchableOpacity style={s.contactBtn} activeOpacity={0.85} onPress={handleContact}>
+            <MaterialIcons name="email" size={22} color={colors.onPrimary} />
+            <Text style={s.contactBtnText}>Enviar E-mail</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={s.contactBtn} activeOpacity={0.85} onPress={handleContact}>
+            <MaterialIcons name="chat" size={22} color={colors.onPrimary} />
+            <Text style={s.contactBtnText}>Entrar em Contato</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Sem contato */}
+        {!item.contato && (
+          <View style={s.noContact}>
+            <MaterialIcons name="info-outline" size={16} color={colors.textSecondary} />
+            <Text style={s.noContactText}>Vendedor não informou contato.</Text>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -162,23 +240,34 @@ export default function MarketplaceDetail() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: 40 },
-
-  /* Sem foto */
-  header: { paddingTop: 32, paddingHorizontal: 20, paddingBottom: 8 },
-  backBtn: { padding: 4, marginLeft: -4, alignSelf: 'flex-start' },
   notFound: { padding: 24, fontSize: 16, color: colors.textSecondary },
-  iconBox: {
-    width: 96, height: 96, borderRadius: 16,
-    backgroundColor: colors.surfaceContainerHighest,
-    alignItems: 'center', justifyContent: 'center',
-    alignSelf: 'center', marginTop: 16,
+
+  /* Header sem foto */
+  headerBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 32, paddingBottom: 8,
   },
+  backBtnSimple: { padding: 4, marginLeft: -4 },
+  ownerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: colors.onPrimaryContainer, borderRadius: 8,
+  },
+  editBtnText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  deleteBtn: { padding: 6 },
 
   /* Galeria */
   gallery: { height: IMG_H, position: 'relative' },
   galleryImg: { width: SCREEN_W, height: IMG_H },
   backBtnOverlay: {
     position: 'absolute', top: 44, left: 16,
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  editBtnOverlay: {
+    position: 'absolute', top: 44, right: 16,
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center', justifyContent: 'center',
@@ -192,10 +281,11 @@ const s = StyleSheet.create({
 
   body: { paddingHorizontal: 20, paddingTop: 20, gap: 14 },
 
-  titleRow: { gap: 8 },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+  title: { flex: 1, fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
   badge: {
-    alignSelf: 'flex-start', backgroundColor: colors.onPrimaryContainer,
+    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: colors.onPrimaryContainer,
     paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999,
   },
   badgeText: { fontSize: 11, fontWeight: '700', color: colors.primaryContainer },
@@ -216,9 +306,17 @@ const s = StyleSheet.create({
   descLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
   desc: { fontSize: 16, color: colors.text, lineHeight: 24 },
 
-  thumbRow: { marginHorizontal: -4 },
   thumb: { width: 64, height: 64, borderRadius: 8, borderWidth: 2, borderColor: 'transparent' },
   thumbActive: { borderColor: colors.primary },
+
+  whatsappBtn: {
+    height: 56, backgroundColor: '#25D366', borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    shadowColor: '#25D366', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    marginTop: 8,
+  },
+  whatsappBtnText: { color: '#fff', fontSize: 18, fontWeight: '600' },
 
   contactBtn: {
     height: 56, backgroundColor: colors.primary, borderRadius: 12,
@@ -228,4 +326,10 @@ const s = StyleSheet.create({
     marginTop: 8,
   },
   contactBtnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600' },
+
+  noContact: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 4, marginTop: 4,
+  },
+  noContactText: { fontSize: 14, color: colors.textSecondary },
 });

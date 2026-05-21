@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "VacaFacil_FrontEnd",
-    "slug": "VacaFacil_FrontEnd",
+    "name": "VacaFacil",
+    "slug": "VacaFacil",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,7 +28,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O VacaFácil precisa acessar sua galeria para adicionar fotos.",
+          "cameraPermission": "O VacaFácil precisa da câmera para tirar fotos."
+        }
+      ]
     ],
     "extra": {
       "router": {},

@@ -10,7 +10,15 @@
       "Read(//c/Program Files/**)",
       "PowerShell(ls \"C:\\\\Program Files\\\\\")",
       "Read(//c/Users/vitor/AppData/Local/GitHubDesktop/**)",
-      "Read(//c/Users/vitor/**)"
+      "Read(//c/Users/vitor/**)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\vitor\\\\OneDrive\\\\Documentos\\\\backend-vacafacil-app\\\\BackEnd-VacaFacil\\\\VacaFacil-Backend-main\\\\src\" -Recurse -File | Select-Object FullName | ForEach-Object { $_.FullName })"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\vitor\\OneDrive\\Documentos\\backend-vacafacil-app\\BackEnd-VacaFacil\\VacaFacil-Backend-main\\src\\middleware",
+      "C:\\Users\\vitor\\OneDrive\\Documentos\\backend-vacafacil-app\\BackEnd-VacaFacil\\VacaFacil-Backend-main\\src\\routes",
+      "C:\\Users\\vitor\\OneDrive\\Documentos\\backend-vacafacil-app\\BackEnd-VacaFacil\\VacaFacil-Backend-main\\src\\database",
+      "C:\\Users\\vitor\\OneDrive\\Documentos\\backend-vacafacil-app\\BackEnd-VacaFacil\\VacaFacil-Backend-main\\src\\controllers",
+      "C:\\Users\\vitor\\OneDrive\\Documentos\\backend-vacafacil-app\\BackEnd-VacaFacil\\VacaFacil-Backend-main\\src"
     ]
   }
 }

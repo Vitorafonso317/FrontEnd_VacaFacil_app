@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
   Alert, StyleSheet, TextInput, RefreshControl, Image,
@@ -70,14 +70,14 @@ export default function Vacas() {
     ]);
   }
 
-  const filtered = cows.filter(c => {
+  const filtered = useMemo(() => cows.filter(c => {
     const matchText = c.nome?.toLowerCase().includes(search.toLowerCase()) ||
       c.raca?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'todos' ||
       c.status_saude?.toLowerCase() === statusFilter ||
       (statusFilter === 'saudavel' && c.status_saude?.toLowerCase() === 'ativa');
     return matchText && matchStatus;
-  });
+  }), [cows, search, statusFilter]);
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
 
@@ -121,6 +121,9 @@ export default function Vacas() {
         data={filtered}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={s.list}
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
+        windowSize={7}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

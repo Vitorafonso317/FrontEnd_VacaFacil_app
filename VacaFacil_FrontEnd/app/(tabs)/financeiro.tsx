@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
   Alert, StyleSheet, RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { getReceitas, getDespesas } from '../../services/financialService';
 import type { FinancialRecord } from '../../types';
 import { colors } from '../../constants/colors';
@@ -37,7 +38,7 @@ export default function Financeiro() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useFocusEffect(useCallback(() => { load(); }, []));
 
   const totalReceitas = receitas.reduce((acc, r) => acc + (r.valor ?? 0), 0);
   const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor ?? 0), 0);
@@ -113,6 +114,9 @@ export default function Financeiro() {
           data={records}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={s.list}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={7}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

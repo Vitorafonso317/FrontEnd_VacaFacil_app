@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet, TextInput, RefreshControl,
+  Alert, StyleSheet, TextInput, RefreshControl, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -137,9 +137,13 @@ export default function Vacas() {
               activeOpacity={0.8}
               onPress={() => router.push(`/vacas/${item.id}`)}
             >
-              <View style={s.cowImage}>
-                <MaterialIcons name="agriculture" size={32} color={colors.primary} />
-              </View>
+              {item.foto_url ? (
+                <Image source={{ uri: item.foto_url }} style={s.cowImage} resizeMode="cover" />
+              ) : (
+                <View style={[s.cowImage, s.cowImagePlaceholder]}>
+                  <MaterialIcons name="agriculture" size={32} color={colors.primary} />
+                </View>
+              )}
               <View style={s.cardInfo}>
                 <View style={s.cardTop}>
                   <Text style={s.cowName}>{item.nome}</Text>
@@ -147,8 +151,10 @@ export default function Vacas() {
                     <Text style={[s.badgeText, { color: st.text }]}>{st.label.toUpperCase()}</Text>
                   </View>
                 </View>
-                <Text style={s.cowMeta}><Text style={s.metaBold}>Raça:</Text> {item.raca ?? '—'}</Text>
-                <Text style={s.cowMeta}><Text style={s.metaBold}>Idade:</Text> {item.idade ?? '—'}</Text>
+                <Text style={s.cowMeta}>
+                  {[item.raca, item.idade ? `${item.idade} anos` : null, item.peso ? `${item.peso} kg` : null]
+                    .filter(Boolean).join(' · ') || '—'}
+                </Text>
               </View>
 
               {/* Registro rápido de leite */}
@@ -222,7 +228,9 @@ const s = StyleSheet.create({
     borderRadius: 8, borderWidth: 1, borderColor: colors.borderLight, padding: 12,
   },
   cowImage: {
-    width: 72, height: 72, borderRadius: 8,
+    width: 72, height: 72, borderRadius: 8, overflow: 'hidden',
+  },
+  cowImagePlaceholder: {
     backgroundColor: colors.surfaceContainer,
     alignItems: 'center', justifyContent: 'center',
   },

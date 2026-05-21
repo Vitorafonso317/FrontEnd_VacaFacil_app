@@ -1,4 +1,5 @@
-export function formatCurrency(value: number) {
+export function formatCurrency(value: number | undefined | null) {
+  if (value == null || isNaN(value)) return 'R$ —';
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 

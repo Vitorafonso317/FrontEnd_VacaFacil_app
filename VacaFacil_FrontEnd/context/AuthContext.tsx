@@ -19,11 +19,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setUnauthorizedHandler(signOut);
-  }, []);
-
-  // Lê do disco UMA vez na inicialização e coloca em memória
+  // Lê do disco UMA vez na inicialização, injeta token em memória
+  // e só então registra o handler de 401 — evita logout durante cold start
   useEffect(() => {
     AsyncStorage.multiGet(['token', 'user']).then(([t, u]) => {
       const savedToken = t[1] ?? null;
@@ -32,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTokenState(savedToken);
       setUser(savedUser);
       setLoading(false);
+      setUnauthorizedHandler(signOut);
     });
   }, []);
 

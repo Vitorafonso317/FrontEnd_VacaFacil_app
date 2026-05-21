@@ -31,7 +31,7 @@ function SkeletonBox({ width, height }: { width: number | string; height: number
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,14 +50,16 @@ export default function Dashboard() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!authLoading) load();
+  }, [load, authLoading]);
 
   const barHeights = stats ? buildBarHeights(stats.producao.media_diaria) : null;
 
   // Pega as 2 últimas vacas com produção para a lista de manejo
   const ultimasVacas = stats?.relatorio.registros.slice(0, 2) ?? [];
 
-  const saldoAtual = stats ? stats.financeiro.saldo : 0;
+  const saldoAtual = stats?.financeiro?.saldo ?? 0;
 
   // Variação de produção: compara média com previsão/7
   const variacaoProducao = stats && stats.producao.base_registros > 1

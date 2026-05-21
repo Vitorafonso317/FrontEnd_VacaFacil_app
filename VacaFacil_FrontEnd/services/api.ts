@@ -1,6 +1,6 @@
 import { BASE_URL } from '../constants/config';
 
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 60_000;
 
 let _token: string | null = null;
 let _onUnauthorized: (() => void) | null = null;
@@ -17,7 +17,9 @@ export function setUnauthorizedHandler(fn: () => void) {
   _onUnauthorized = fn;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+type RequestMeta = { silent401?: boolean };
+
+async function request<T>(path: string, options: RequestInit = {}, meta: RequestMeta = {}): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -34,7 +36,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
     const json = await response.json();
     if (response.status === 401) {
-      _onUnauthorized?.();
+      if (_token && !meta.silent401) _onUnauthorized?.();
       throw new Error(json.message ?? 'Sessão expirada. Faça login novamente.');
     }
     if (!json.success) throw new Error(json.message ?? 'Erro desconhecido');

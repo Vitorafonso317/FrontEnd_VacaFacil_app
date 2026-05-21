@@ -39,10 +39,22 @@ export default function Register() {
     setLoading(true);
     try {
       await register(name.trim(), emailNorm, password);
+    } catch (e: any) {
+      setLoading(false);
+      Alert.alert('Erro ao cadastrar', e.message);
+      return;
+    }
+
+    try {
       const res = await login(emailNorm, password);
       await signIn(res.data.token, res.data.user);
     } catch (e: any) {
-      Alert.alert('Erro ao cadastrar', e.message);
+      setLoading(false);
+      Alert.alert(
+        'Conta criada!',
+        'Seu cadastro foi concluído, mas o login automático falhou. Faça login manualmente.',
+        [{ text: 'Fazer Login', onPress: () => router.replace('/(auth)/login') }]
+      );
     } finally {
       setLoading(false);
     }

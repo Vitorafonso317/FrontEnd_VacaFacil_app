@@ -1,17 +1,23 @@
+import { Platform } from 'react-native';
 import { getToken } from './api';
 import { BASE_URL } from '../constants/config';
 
-async function uploadImagem(endpoint: string, imageUri: string): Promise<string> {
+async function uploadImagem(endpoint: string, imageUri: string, urlField = 'foto_url'): Promise<string> {
   const token = getToken();
   const ext = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
   const formData = new FormData();
-  formData.append('foto', {
-    uri: imageUri,
-    name: `foto-${Date.now()}.${ext}`,
-    type: mimeType,
-  } as any);
+  if (Platform.OS === 'web') {
+    const blob = await fetch(imageUri).then(r => r.blob());
+    formData.append('foto', blob, `foto-${Date.now()}.${ext}`);
+  } else {
+    formData.append('foto', {
+      uri: imageUri,
+      name: `foto-${Date.now()}.${ext}`,
+      type: mimeType,
+    } as any);
+  }
 
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     method: 'POST',
@@ -21,7 +27,7 @@ async function uploadImagem(endpoint: string, imageUri: string): Promise<string>
 
   const json = await response.json();
   if (!json.success) throw new Error(json.message ?? 'Erro ao enviar foto');
-  return json.data.foto_url as string;
+  return (json.data[urlField] ?? json.data.foto_url) as string;
 }
 
 export function uploadFotoVaca(vacaId: number, imageUri: string): Promise<string> {
@@ -30,4 +36,8 @@ export function uploadFotoVaca(vacaId: number, imageUri: string): Promise<string
 
 export function uploadFotoUsuario(imageUri: string): Promise<string> {
   return uploadImagem('/users/me/foto', imageUri);
+}
+
+export function uploadFotoAnuncio(itemId: number, imageUri: string): Promise<string> {
+  return uploadImagem(`/marketplace/${itemId}/foto`, imageUri);
 }

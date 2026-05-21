@@ -156,7 +156,7 @@ export default function Perfil() {
             : (
               <TouchableOpacity
                 style={s.upgradeBtn}
-                onPress={() => Alert.alert('Upgrade', 'Funcionalidade de assinatura em breve!', [{ text: 'OK' }])}
+                onPress={() => router.push('/perfil/planos')}
                 activeOpacity={0.8}
               >
                 <Text style={s.upgradeBtnText}>Fazer Upgrade</Text>

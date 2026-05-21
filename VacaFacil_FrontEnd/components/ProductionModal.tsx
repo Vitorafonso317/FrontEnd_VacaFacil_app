@@ -60,8 +60,12 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
       return;
     }
     const litrosNum = parseFloat(litros.replace(',', '.'));
-    if (!litros || isNaN(litrosNum) || litrosNum <= 0) {
+    if (!litros || isNaN(litrosNum) || litrosNum < 0.01) {
       Alert.alert('Atenção', 'Informe a quantidade de litros produzidos.');
+      return;
+    }
+    if (litrosNum > 500) {
+      Alert.alert('Valor inválido', 'O máximo permitido é 500 litros por registro.');
       return;
     }
     if (!data || !isValidDate(data)) {

@@ -88,6 +88,8 @@ export type MarketplaceItem = {
   categoria?: string;
   contato?: string;
   user_id: number;
+  vaca_id?: number;
+  fotos?: string[];
   created_at?: string;
 };
 
@@ -97,6 +99,7 @@ export type MarketplaceInput = {
   preco: number;
   categoria?: string;
   contato?: string;
+  vaca_id?: number;
 };
 
 export type DashboardStats = {
@@ -108,7 +111,7 @@ export type DashboardStats = {
   financeiro: {
     previsao_receita_proximo_mes: number;
     previsao_despesa_proximo_mes: number;
-    saldo?: number;
+    saldo: number;
   };
   rebanho: {
     total_vacas: number;

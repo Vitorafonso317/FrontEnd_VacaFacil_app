@@ -25,10 +25,10 @@ function settled<T>(result: PromiseSettledResult<ApiResponse<T>>, fallback: T): 
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [producao, financeiro, rebanho, relatorio] = await Promise.allSettled([
-    request<ApiResponse<DashboardStats['producao']>>('/ml/predict-production', { method: 'POST', body: JSON.stringify({}) }),
-    request<ApiResponse<DashboardStats['financeiro']>>('/ml/financial-forecast'),
-    request<ApiResponse<DashboardStats['rebanho']>>('/ml/analyze-performance'),
-    request<ApiResponse<DashboardStats['relatorio']>>('/relatorios/producao/json'),
+    request<ApiResponse<DashboardStats['producao']>>('/ml/predict-production', {}, { silent401: true }),
+    request<ApiResponse<DashboardStats['financeiro']>>('/ml/financial-forecast', {}, { silent401: true }),
+    request<ApiResponse<DashboardStats['rebanho']>>('/ml/analyze-performance', {}, { silent401: true }),
+    request<ApiResponse<DashboardStats['relatorio']>>('/relatorios/producao/json', {}, { silent401: true }),
   ]);
 
   return {

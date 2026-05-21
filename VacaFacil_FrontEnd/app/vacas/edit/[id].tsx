@@ -19,7 +19,7 @@ export default function EditarVaca() {
         raca: res.data.raca ?? '',
         idade: res.data.idade != null ? String(res.data.idade) : '',
         peso: res.data.peso != null ? String(res.data.peso) : '',
-        status_saude: res.data.status_saude ?? 'saudavel',
+        status_saude: res.data.status_saude === 'ativa' ? 'saudavel' : (res.data.status_saude ?? 'saudavel'),
       }))
       .catch(e => Alert.alert('Erro', e.message))
       .finally(() => setLoading(false));

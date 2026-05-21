@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator, Alert,
   StyleSheet, TouchableOpacity, RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import request from '../../services/api';
@@ -29,7 +30,7 @@ export default function Marketplace() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useFocusEffect(useCallback(() => { load(); }, []));
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
 

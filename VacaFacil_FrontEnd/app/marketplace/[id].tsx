@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ActivityIndicator, Alert, StyleSheet,
   ScrollView, TouchableOpacity, Linking, Image,
-  FlatList, Dimensions,
+  FlatList, Dimensions, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -55,7 +55,7 @@ export default function MarketplaceDetail() {
 
   const fotos = item.fotos ?? [];
   const hasImages = fotos.length > 0;
-  const isOwner = user?.id === item.user_id;
+  const isOwner = !!user && Number(user.id) === Number(item.user_id);
   const contact = item.contato ? detectContact(item.contato) : null;
 
   function handleContact() {
@@ -72,19 +72,26 @@ export default function MarketplaceDetail() {
     );
   }
 
+  async function doDelete() {
+    try {
+      await request(`/marketplace/${id}`, { method: 'DELETE' });
+      router.back();
+    } catch (e: any) {
+      Alert.alert('Erro', e.message);
+    }
+  }
+
   function handleDelete() {
+    if (Platform.OS === 'web') {
+      // Alert.alert callbacks não disparam corretamente no browser
+      if ((window as any).confirm('Deseja remover este anúncio? Esta ação não pode ser desfeita.')) {
+        doDelete();
+      }
+      return;
+    }
     Alert.alert('Excluir anúncio', 'Deseja remover este anúncio? Esta ação não pode ser desfeita.', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir', style: 'destructive', onPress: async () => {
-          try {
-            await request(`/marketplace/${id}`, { method: 'DELETE' });
-            router.back();
-          } catch (e: any) {
-            Alert.alert('Erro', e.message);
-          }
-        },
-      },
+      { text: 'Excluir', style: 'destructive', onPress: doDelete },
     ]);
   }
 
@@ -218,15 +225,12 @@ export default function MarketplaceDetail() {
             <MaterialIcons name="email" size={22} color={colors.onPrimary} />
             <Text style={s.contactBtnText}>Enviar E-mail</Text>
           </TouchableOpacity>
-        ) : (
+        ) : contact && contact.type === 'unknown' ? (
           <TouchableOpacity style={s.contactBtn} activeOpacity={0.85} onPress={handleContact}>
             <MaterialIcons name="chat" size={22} color={colors.onPrimary} />
-            <Text style={s.contactBtnText}>Entrar em Contato</Text>
+            <Text style={s.contactBtnText}>Ver Contato</Text>
           </TouchableOpacity>
-        )}
-
-        {/* Sem contato */}
-        {!item.contato && (
+        ) : (
           <View style={s.noContact}>
             <MaterialIcons name="info-outline" size={16} color={colors.textSecondary} />
             <Text style={s.noContactText}>Vendedor não informou contato.</Text>

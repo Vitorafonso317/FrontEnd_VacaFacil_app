@@ -6,8 +6,11 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { useDashboard, useVacas, useProximasTarefas, useRefreshOnFocus, QK } from '../../hooks/queries';
-import { scheduleEventReminders } from '../../services/notificationService';
+import { useDashboard, useVacas, useProximasTarefas, usePartosProximos, useAnomalias, useCarencia, useRefreshOnFocus, QK } from '../../hooks/queries';
+import type { Anomalia } from '../../hooks/queries';
+import type { Medicamento } from '../../types';
+import { scheduleCarenciaFim } from '../../services/notificationService';
+import { scheduleEventReminders, schedulePartoPrevisto } from '../../services/notificationService';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
@@ -55,17 +58,34 @@ export default function Dashboard() {
   const { data: stats, isLoading: loading, isFetching, refetch } = useDashboard(!authLoading);
   const { data: tarefas = [] } = useProximasTarefas();
   const { data: vacas = [] } = useVacas();
+  const { data: partosProximos = [] } = usePartosProximos();
+  const { data: anomalias = [] } = useAnomalias();
+  const { data: carencias = [] } = useCarencia();
   useRefreshOnFocus(QK.dashboard);
-
-  useEffect(() => {
-    if (tarefas.length > 0) scheduleEventReminders(tarefas as any[]);
-  }, [tarefas]);
 
   const vacaMap = useMemo(() => {
     const map: Record<number, string> = {};
     (vacas as any[]).forEach(v => { map[v.id] = v.nome; });
     return map;
   }, [vacas]);
+
+  useEffect(() => {
+    if (tarefas.length > 0) scheduleEventReminders(tarefas as any[]);
+  }, [tarefas]);
+
+  useEffect(() => {
+    if (carencias.length > 0) scheduleCarenciaFim(carencias as Medicamento[]);
+  }, [carencias]);
+
+  useEffect(() => {
+    if (partosProximos.length === 0) return;
+    const insems = partosProximos.map(p => ({
+      id: p.id,
+      vaca_nome: vacaMap[p.vaca_id] ?? `Vaca #${p.vaca_id}`,
+      data: p.insemData,
+    }));
+    schedulePartoPrevisto(insems);
+  }, [partosProximos, vacaMap]);
 
   const barHeights = stats ? buildBarHeights(stats.producao.media_diaria) : null;
   const ultimasVacas = stats?.relatorio.registros.slice(0, 2) ?? [];
@@ -163,6 +183,107 @@ export default function Dashboard() {
           }
         </TouchableOpacity>
       </View>
+
+      {/* Badge Partos Próximos */}
+      {partosProximos.length > 0 && (
+        <TouchableOpacity
+          style={s.partoAlert}
+          activeOpacity={0.85}
+          onPress={() => router.push('/(tabs)/vacas')}
+        >
+          <View style={s.partoAlertLeft}>
+            <MaterialIcons name="child-friendly" size={28} color={colors.secondary} />
+            <View style={s.partoBadge}>
+              <Text style={s.partoBadgeTxt}>{partosProximos.length}</Text>
+            </View>
+          </View>
+          <View style={s.partoAlertInfo}>
+            <Text style={s.partoAlertTitle}>
+              {partosProximos.length === 1 ? '1 parto previsto' : `${partosProximos.length} partos previstos`} nos próximos 30 dias
+            </Text>
+            <Text style={s.partoAlertSub}>
+              Mais próximo:{' '}
+              {vacaMap[partosProximos[0].vaca_id] ?? `Vaca #${partosProximos[0].vaca_id}`}{' '}
+              — em {partosProximos[0].dias} {partosProximos[0].dias === 1 ? 'dia' : 'dias'}
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={20} color={colors.secondary} />
+        </TouchableOpacity>
+      )}
+
+      {/* Card de Alertas de Saúde */}
+      {anomalias.length > 0 && (
+        <View style={s.alertaSection}>
+          <View style={s.alertaHeader}>
+            <MaterialIcons name="warning" size={18} color={colors.error} />
+            <Text style={s.alertaTitle}>Alertas de Saúde</Text>
+            <View style={s.alertaBadge}>
+              <Text style={s.alertaBadgeTxt}>{anomalias.length}</Text>
+            </View>
+          </View>
+          {anomalias.map((a: Anomalia) => (
+            <TouchableOpacity
+              key={a.vaca_id}
+              style={[s.alertaCard, a.severidade === 'alta' ? s.alertaCardAlta : s.alertaCardMedia]}
+              activeOpacity={0.85}
+              onPress={() => router.push(`/vacas/${a.vaca_id}`)}
+            >
+              <View style={[s.alertaIndicator, a.severidade === 'alta' ? s.indicatorAlta : s.indicatorMedia]} />
+              <View style={s.alertaInfo}>
+                <View style={s.alertaRow}>
+                  <Text style={s.alertaVaca}>{a.vaca_nome}</Text>
+                  <View style={[s.severidadeBadge, a.severidade === 'alta' ? s.severidadeAlta : s.severidadeMedia]}>
+                    <Text style={s.severidadeTxt}>
+                      {a.severidade === 'alta' ? 'GRAVE' : 'ATENÇÃO'} −{a.queda_pct}%
+                    </Text>
+                  </View>
+                </View>
+                <Text style={s.alertaMensagem}>{a.mensagem}</Text>
+                <Text style={s.alertaSugestao}>{a.sugestao}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Card Descarte de Leite (carência) */}
+      {carencias.length > 0 && (
+        <View style={s.carenciaSection}>
+          <View style={s.carenciaHeader}>
+            <MaterialIcons name="no-drinks" size={18} color="#F59E0B" />
+            <Text style={s.carenciaTitle}>Descarte de Leite</Text>
+            <View style={s.carenciaBadge}>
+              <Text style={s.carenciaBadgeTxt}>{carencias.length}</Text>
+            </View>
+          </View>
+          {(carencias as Medicamento[]).map(c => {
+            const fimDate = new Date(c.data_fim_carencia + 'T00:00:00');
+            const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+            const diasRestantes = Math.ceil((fimDate.getTime() - hoje.getTime()) / 86_400_000);
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={s.carenciaCard}
+                activeOpacity={0.85}
+                onPress={() => router.push(`/vacas/${c.vaca_id}`)}
+              >
+                <View style={s.carenciaIndicator} />
+                <View style={s.carenciaInfo}>
+                  <View style={s.carenciaRow}>
+                    <Text style={s.carenciaVaca}>{c.vaca_nome}</Text>
+                    <Text style={s.carenciaDias}>
+                      {diasRestantes === 0 ? 'Hoje libera!' : `${diasRestantes} ${diasRestantes === 1 ? 'dia' : 'dias'}`}
+                    </Text>
+                  </View>
+                  <Text style={s.carenciaMed}>{c.nome_medicamento} · até {fimDate.toLocaleDateString('pt-BR')}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       {/* Gráfico Previsão IA */}
       <View style={s.card}>
@@ -379,4 +500,78 @@ const s = StyleSheet.create({
   emptyLink: { fontSize: 15, color: colors.primary, fontWeight: '600', fontFamily: fonts.semiBold },
 
   skeleton: { backgroundColor: colors.surfaceContainerHigh },
+
+  partoAlert: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.onPrimaryContainer,
+    borderRadius: 12, borderWidth: 1.5, borderColor: colors.secondary,
+    padding: 14,
+  },
+  partoAlertLeft: { position: 'relative', width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  partoBadge: {
+    position: 'absolute', top: -4, right: -6,
+    minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  partoBadgeTxt: { fontSize: 10, fontWeight: '700', fontFamily: fonts.bold, color: colors.onPrimary },
+  partoAlertInfo: { flex: 1, gap: 2 },
+  partoAlertTitle: { fontSize: 14, fontWeight: '700', fontFamily: fonts.bold, color: colors.text },
+  partoAlertSub: { fontSize: 12, color: colors.textSecondary },
+
+  alertaSection: { gap: 10 },
+  alertaHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  alertaTitle: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, flex: 1 },
+  alertaBadge: {
+    minWidth: 22, height: 22, borderRadius: 11,
+    backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
+  },
+  alertaBadgeTxt: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: '#fff' },
+
+  alertaCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 12, borderWidth: 1, padding: 14, overflow: 'hidden',
+  },
+  alertaCardAlta: { backgroundColor: colors.errorContainer, borderColor: colors.error },
+  alertaCardMedia: { backgroundColor: '#FFF8E7', borderColor: '#F59E0B' },
+
+  alertaIndicator: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+  indicatorAlta: { backgroundColor: colors.error },
+  indicatorMedia: { backgroundColor: '#F59E0B' },
+
+  alertaInfo: { flex: 1, gap: 4 },
+  alertaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  alertaVaca: { fontSize: 15, fontWeight: '700', fontFamily: fonts.bold, color: colors.text },
+
+  severidadeBadge: {
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999,
+  },
+  severidadeAlta: { backgroundColor: colors.error },
+  severidadeMedia: { backgroundColor: '#F59E0B' },
+  severidadeTxt: { fontSize: 10, fontWeight: '700', fontFamily: fonts.bold, color: '#fff' },
+
+  alertaMensagem: { fontSize: 13, color: colors.text },
+  alertaSugestao: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic' },
+
+  carenciaSection: { gap: 10 },
+  carenciaHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  carenciaTitle: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, flex: 1 },
+  carenciaBadge: {
+    minWidth: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#F59E0B', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
+  },
+  carenciaBadgeTxt: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: '#fff' },
+  carenciaCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12, borderWidth: 1, borderColor: '#F59E0B',
+    padding: 14, overflow: 'hidden',
+  },
+  carenciaIndicator: { width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: '#F59E0B' },
+  carenciaInfo: { flex: 1, gap: 3 },
+  carenciaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  carenciaVaca: { fontSize: 15, fontWeight: '700', fontFamily: fonts.bold, color: colors.text },
+  carenciaDias: { fontSize: 13, fontWeight: '700', fontFamily: fonts.bold, color: '#D97706' },
+  carenciaMed: { fontSize: 12, color: colors.textSecondary },
 });

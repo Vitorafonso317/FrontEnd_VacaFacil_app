@@ -10,15 +10,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getCow, deleteCow } from '../../services/cattleService';
 import { uploadFotoVaca } from '../../services/uploadService';
 import { deleteReproducao } from '../../services/reproducaoService';
+import { deleteMedicamento } from '../../services/medicamentosService';
 import { useQuery } from '@tanstack/react-query';
 import {
-  useProducaoByCow, useReproducao, QK,
+  useProducaoByCow, useReproducao, useEstaEmCarencia, QK,
 } from '../../hooks/queries';
 import type { Cow, ProductionRecord, ReproducaoEvent } from '../../types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import ProductionModal from '../../components/ProductionModal';
 import ReproducaoModal from '../../components/ReproducaoModal';
+import SaudeModal from '../../components/SaudeModal';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   saudavel:   { label: 'Ativa',      color: colors.primaryContainer, bg: colors.onPrimaryContainer },
@@ -60,6 +62,7 @@ export default function CowDetail() {
   const [uploading, setUploading] = useState(false);
   const [prodModal, setProdModal] = useState(false);
   const [reproModal, setReproModal] = useState(false);
+  const [saudeModal, setSaudeModal] = useState(false);
   const [editingRepro, setEditingRepro] = useState<ReproducaoEvent | null>(null);
 
   const { data: cow, isLoading: cowLoading } = useQuery<Cow>({
@@ -69,17 +72,27 @@ export default function CowDetail() {
   });
 
   const { data: producaoData = [], isLoading: prodLoading } = useProducaoByCow(cowId);
-  const { data: allRepro = [], isLoading: reproLoading } = useReproducao();
-
-  const reproData = useMemo(
-    () => allRepro.filter(e => e.vaca_id === cowId),
-    [allRepro, cowId],
-  );
+  const { data: reproData = [], isLoading: reproLoading } = useReproducao(cowId);
+  const { emCarencia, tratamento, isLoading: carenciaLoading } = useEstaEmCarencia(cowId);
 
   const avgLitros = useMemo(() => {
     if (!producaoData.length) return null;
     return producaoData.reduce((s, r) => s + (r.litros ?? 0), 0) / producaoData.length;
   }, [producaoData]);
+
+  // Previsão de parto: último evento "Inseminação" + 283 dias
+  const partoPrevisto = useMemo(() => {
+    const insem = [...reproData]
+      .filter(e => e.tipo_evento?.toLowerCase().includes('insemina'))
+      .sort((a, b) => b.data.localeCompare(a.data))[0];
+    if (!insem) return null;
+    const [y, m, d] = insem.data.split('-').map(Number);
+    const partoDate = new Date(y, m - 1, d + 283);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dias = Math.ceil((partoDate.getTime() - hoje.getTime()) / 86_400_000);
+    return { dias, data: partoDate.toLocaleDateString('pt-BR') };
+  }, [reproData]);
 
   const timeline: TimelineEntry[] = useMemo(() => {
     const prod: TimelineEntry[] = producaoData.map(d => ({ kind: 'production', data: d }));
@@ -87,7 +100,7 @@ export default function CowDetail() {
     return [...prod, ...repro].sort((a, b) => b.data.data.localeCompare(a.data.data));
   }, [producaoData, reproData]);
 
-  const loading = cowLoading || prodLoading || reproLoading;
+  const loading = cowLoading || prodLoading || reproLoading || carenciaLoading;
 
   async function handleDelete() {
     Alert.alert('Excluir vaca', `Deseja excluir ${cow?.nome}?`, [
@@ -139,6 +152,28 @@ export default function CowDetail() {
     }
   }
 
+  async function handleRemoverCarencia() {
+    if (!tratamento) return;
+    Alert.alert('Encerrar tratamento', `Remover "${tratamento.nome_medicamento}" e liberar o leite?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover', style: 'destructive', onPress: async () => {
+          try {
+            await deleteMedicamento(tratamento.id);
+            queryClient.invalidateQueries({ queryKey: [...QK.carencia, cowId] });
+          } catch (e: any) {
+            Alert.alert('Erro', e.message);
+          }
+        },
+      },
+    ]);
+  }
+
+  function handleEditRepro(event: ReproducaoEvent) {
+    setEditingRepro(event);
+    setReproModal(true);
+  }
+
   async function handleDeleteRepro(event: ReproducaoEvent) {
     Alert.alert('Remover evento', `Remover "${event.tipo_evento}" de ${fmtFull(event.data)}?`, [
       { text: 'Cancelar', style: 'cancel' },
@@ -146,7 +181,8 @@ export default function CowDetail() {
         text: 'Remover', style: 'destructive', onPress: async () => {
           try {
             await deleteReproducao(event.id);
-            queryClient.invalidateQueries({ queryKey: QK.reproducao });
+            queryClient.invalidateQueries({ queryKey: [...QK.reproducao, cowId] });
+            queryClient.invalidateQueries({ queryKey: QK.reproProx });
           } catch (e: any) {
             Alert.alert('Erro', e.message);
           }
@@ -208,6 +244,23 @@ export default function CowDetail() {
         </View>
       </View>
 
+      {/* Banner de carência ativa */}
+      {emCarencia && tratamento && (
+        <View style={s.carenciaBanner}>
+          <MaterialIcons name="medication" size={20} color={colors.error} />
+          <View style={s.carenciaInfo}>
+            <Text style={s.carenciaTitulo}>EM CARÊNCIA — LEITE DESCARTÁVEL</Text>
+            <Text style={s.carenciaDetalhe}>
+              {tratamento.nome_medicamento} · liberado em{' '}
+              {new Date(tratamento.data_fim_carencia + 'T00:00:00').toLocaleDateString('pt-BR')}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={handleRemoverCarencia} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="close" size={18} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Ações rápidas */}
       <View style={s.actionsGrid}>
         <TouchableOpacity style={s.actionPrimary} activeOpacity={0.85} onPress={() => setProdModal(true)}>
@@ -218,8 +271,18 @@ export default function CowDetail() {
           <MaterialIcons name="favorite" size={26} color={colors.secondary} />
           <Text style={s.actionSecondaryTxt}>Evento Reprod.</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.actionOutline} activeOpacity={0.85} onPress={() => router.push(`/vacas/edit/${id}`)}>
-          <MaterialIcons name="edit" size={22} color={colors.textSecondary} />
+        <TouchableOpacity
+          style={[s.actionOutline, emCarencia && s.actionOutlineDanger]}
+          activeOpacity={0.85}
+          onPress={() => setSaudeModal(true)}
+        >
+          <MaterialIcons name="medication" size={22} color={emCarencia ? colors.error : colors.textSecondary} />
+          <Text style={[s.actionOutlineTxt, emCarencia && { color: colors.error }]}>
+            {emCarencia ? 'Carência' : 'Tratamento'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.actionOutlineSmall} activeOpacity={0.85} onPress={() => router.push(`/vacas/edit/${id}`)}>
+          <MaterialIcons name="edit" size={20} color={colors.textSecondary} />
           <Text style={s.actionOutlineTxt}>Editar</Text>
         </TouchableOpacity>
       </View>
@@ -254,6 +317,30 @@ export default function CowDetail() {
           <Text style={s.statValueMd}>{cow.idade != null ? `${cow.idade} anos` : '—'}</Text>
         </View>
       </View>
+
+      {/* Previsão de Parto */}
+      {partoPrevisto !== null && (
+        <View style={[s.partoCard, partoPrevisto.dias < 0 && s.partoCardVencido]}>
+          <View style={s.partoLeft}>
+            <MaterialIcons
+              name="child-friendly"
+              size={28}
+              color={partoPrevisto.dias < 0 ? colors.error : colors.secondary}
+            />
+          </View>
+          <View style={s.partoInfo}>
+            <Text style={s.partoLabel}>PARTO PREVISTO</Text>
+            <Text style={[s.partoDias, partoPrevisto.dias < 0 && s.partoDiasVencido]}>
+              {partoPrevisto.dias < 0
+                ? `Atrasado ${Math.abs(partoPrevisto.dias)} dias`
+                : partoPrevisto.dias === 0
+                  ? 'Hoje!'
+                  : `Em ${partoPrevisto.dias} dias`}
+            </Text>
+            <Text style={s.partoData}>{partoPrevisto.data}</Text>
+          </View>
+        </View>
+      )}
 
       {/* Linha do Tempo */}
       <View style={s.section}>
@@ -314,13 +401,20 @@ export default function CowDetail() {
                         <Text style={s.tlTitle}>{evt.tipo_evento}</Text>
                         {evt.observacoes ? <Text style={s.tlObs}>{evt.observacoes}</Text> : null}
                       </View>
-                      <TouchableOpacity
-                        style={s.tlDeleteBtn}
-                        onPress={() => handleDeleteRepro(evt)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <MaterialIcons name="close" size={14} color={colors.textTertiary} />
-                      </TouchableOpacity>
+                      <View style={s.tlActions}>
+                        <TouchableOpacity
+                          onPress={() => handleEditRepro(evt)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <MaterialIcons name="edit" size={14} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleDeleteRepro(evt)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <MaterialIcons name="close" size={14} color={colors.textTertiary} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -341,11 +435,22 @@ export default function CowDetail() {
         preSelectedCowName={cow.nome}
       />
 
+      <SaudeModal
+        visible={saudeModal}
+        onClose={() => setSaudeModal(false)}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: [...QK.carencia, cowId] });
+          setSaudeModal(false);
+        }}
+        cowId={cowId}
+        cowName={cow.nome}
+      />
+
       <ReproducaoModal
         visible={reproModal}
         onClose={() => { setReproModal(false); setEditingRepro(null); }}
         onSaved={() => {
-          queryClient.invalidateQueries({ queryKey: QK.reproducao });
+          queryClient.invalidateQueries({ queryKey: [...QK.reproducao, cowId] });
           queryClient.invalidateQueries({ queryKey: QK.reproProx });
           setReproModal(false);
           setEditingRepro(null);
@@ -402,7 +507,18 @@ const s = StyleSheet.create({
   heroLabel: { fontSize: 12, color: colors.border },
   heroValue: { fontSize: 15, fontWeight: '700', fontFamily: fonts.bold, color: colors.text },
 
-  actionsGrid: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 16 },
+  carenciaBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 20, marginTop: 12,
+    backgroundColor: colors.errorContainer,
+    borderRadius: 10, borderWidth: 1.5, borderColor: colors.error,
+    padding: 12,
+  },
+  carenciaInfo: { flex: 1 },
+  carenciaTitulo: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: colors.error, letterSpacing: 0.5 },
+  carenciaDetalhe: { fontSize: 13, color: colors.text, marginTop: 1 },
+
+  actionsGrid: { flexDirection: 'row', gap: 8, marginHorizontal: 20, marginTop: 16 },
   actionPrimary: {
     flex: 1, height: 72, backgroundColor: colors.primary, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', gap: 4,
@@ -416,6 +532,12 @@ const s = StyleSheet.create({
   actionSecondaryTxt: { color: colors.secondary, fontSize: 12, fontWeight: '600', fontFamily: fonts.semiBold },
   actionOutline: {
     width: 72, height: 72, backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight,
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  actionOutlineDanger: { borderColor: colors.error, backgroundColor: colors.errorContainer },
+  actionOutlineSmall: {
+    width: 60, height: 72, backgroundColor: colors.surfaceContainerLow,
     borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight,
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
@@ -435,6 +557,28 @@ const s = StyleSheet.create({
   statUnit: { fontSize: 14, fontWeight: '400', fontFamily: fonts.regular, color: colors.border },
   statValueMd: { fontSize: 22, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   statEmptyHint: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+
+  partoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    marginHorizontal: 20, marginTop: 16,
+    backgroundColor: colors.onPrimaryContainer,
+    borderRadius: 12, borderWidth: 1.5, borderColor: colors.secondary,
+    padding: 16,
+  },
+  partoCardVencido: {
+    backgroundColor: colors.errorContainer,
+    borderColor: colors.error,
+  },
+  partoLeft: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.surfaceContainerLowest,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  partoInfo: { flex: 1, gap: 2 },
+  partoLabel: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5 },
+  partoDias: { fontSize: 20, fontWeight: '700', fontFamily: fonts.bold, color: colors.secondary, letterSpacing: -0.3 },
+  partoDiasVencido: { color: colors.error },
+  partoData: { fontSize: 13, color: colors.textSecondary },
 
   section: { marginHorizontal: 20, marginTop: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
@@ -472,4 +616,5 @@ const s = StyleSheet.create({
   tlObs: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   tlValueProd: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, letterSpacing: -0.3 },
   tlDeleteBtn: { padding: 2 },
+  tlActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
 });

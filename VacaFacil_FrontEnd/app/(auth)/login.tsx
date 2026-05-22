@@ -93,7 +93,7 @@ export default function Login() {
       {/* Imagem decorativa */}
       <View style={s.imageBox}>
         <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=800&q=80' }}
+          source={require('../../assets/vaca.jpg')}
           style={s.image}
           resizeMode="cover"
         />

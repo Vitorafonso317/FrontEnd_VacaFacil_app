@@ -7,7 +7,8 @@ import { getReproducao } from '../services/reproducaoService';
 import { getReceitas, getDespesas } from '../services/financialService';
 import { getDashboardStats } from '../services/dashboardService';
 import request from '../services/api';
-import type { PaginatedResponse, MarketplaceItem } from '../types';
+import { getMedicamentos } from '../services/medicamentosService';
+import type { PaginatedResponse, MarketplaceItem, Medicamento } from '../types';
 
 // ─── Chaves de cache ────────────────────────────────────────────────────────
 export const QK = {
@@ -20,6 +21,9 @@ export const QK = {
   despesas:     ['despesas']        as const,
   marketplace:  ['marketplace']     as const,
   reproProx:    ['repro-proximas']  as const,
+  partosProx:   ['partos-proximos'] as const,
+  anomalias:    ['anomalias']       as const,
+  carencia:     ['carencia']        as const,
 } as const;
 
 // ─── Hook auxiliar: invalida a query ao focar na tela ───────────────────────
@@ -94,10 +98,10 @@ export function useProducaoByCow(cowId: number) {
 }
 
 // ─── Eventos reprodutivos ─────────────────────────────────────────────────────
-export function useReproducao() {
+export function useReproducao(vacaId?: number) {
   return useQuery({
-    queryKey: QK.reproducao,
-    queryFn: () => getReproducao(1, 100).then(r => r.data),
+    queryKey: vacaId ? [...QK.reproducao, vacaId] : QK.reproducao,
+    queryFn: () => getReproducao(1, 100, vacaId).then(r => r.data),
     staleTime: 5 * 60_000,
   });
 }
@@ -124,4 +128,77 @@ export function useProximasTarefas() {
     },
     staleTime: 5 * 60_000,
   });
+}
+
+// ─── Partos previstos (inseminação + 283 dias) ────────────────────────────────
+// Calcula partos esperados e retorna os que caem nos próximos 30 dias
+export function usePartosProximos(vacaMap: Record<number, string> = {}) {
+  return useQuery({
+    queryKey: QK.partosProx,
+    queryFn: async () => {
+      const res = await request<{ success: boolean; data: any[] }>(
+        '/reproducao?page=1&limit=200'
+      );
+      const inseminacoes = (res.data ?? []).filter(
+        (e: any) => e.tipo_evento?.toLowerCase().includes('insemina')
+      );
+
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const limite = new Date(hoje);
+      limite.setDate(hoje.getDate() + 30);
+
+      return inseminacoes
+        .map((e: any) => {
+          const [y, m, d] = (e.data as string).split('-').map(Number);
+          const partoDate = new Date(y, m - 1, d + 283);
+          const dias = Math.ceil((partoDate.getTime() - hoje.getTime()) / 86_400_000);
+          return { id: e.id, vaca_id: e.vaca_id, insemData: e.data, partoDate, dias };
+        })
+        .filter(p => p.dias >= 0 && p.partoDate <= limite)
+        .sort((a, b) => a.dias - b.dias);
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+// ─── Anomalias de produção ────────────────────────────────────────────────────
+export type Anomalia = {
+  vaca_id: number;
+  vaca_nome: string;
+  ultimo_registro: number;
+  media_7_dias: number;
+  queda_pct: number;
+  mensagem: string;
+  severidade: 'alta' | 'media';
+  sugestao: string;
+};
+
+export function useAnomalias() {
+  return useQuery({
+    queryKey: QK.anomalias,
+    queryFn: () =>
+      request<{ success: boolean; data: { anomalias: Anomalia[]; total: number } }>(
+        '/ml/detect-anomalies'
+      ).then(r => r.data.anomalias ?? []),
+    staleTime: 10 * 60_000,
+  });
+}
+
+// ─── Carência ativa de medicamentos ──────────────────────────────────────────
+// vacaId: filtra por vaca específica; sem parâmetro retorna todas ativas
+export function useCarencia(vacaId?: number) {
+  return useQuery({
+    queryKey: vacaId ? [...QK.carencia, vacaId] : QK.carencia,
+    queryFn: () =>
+      getMedicamentos({ ativo: true, ...(vacaId ? { vaca_id: vacaId } : {}) })
+        .then(r => r.data ?? []),
+    staleTime: 5 * 60_000,
+  });
+}
+
+// Hook para verificar se uma vaca específica está em carência (boolean + detalhes)
+export function useEstaEmCarencia(vacaId: number) {
+  const { data = [], ...rest } = useCarencia(vacaId);
+  return { emCarencia: data.length > 0, tratamento: data[0] ?? null, ...rest };
 }

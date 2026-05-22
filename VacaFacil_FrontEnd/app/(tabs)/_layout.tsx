@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 
@@ -39,7 +39,7 @@ export default function TabsLayout() {
         options={{
           title: 'Vacas',
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="agriculture" size={26} color={color} />
+            <MaterialCommunityIcons name="cow" size={26} color={color} />
           ),
         }}
       />

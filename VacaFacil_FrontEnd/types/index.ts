@@ -118,6 +118,27 @@ export type MarketplaceInput = {
   vaca_id?: number;
 };
 
+export type Medicamento = {
+  id: number;
+  vaca_id: number;
+  vaca_nome: string;
+  user_id: number;
+  nome_medicamento: string;
+  data_aplicacao: string;
+  dias_carencia: number;
+  data_fim_carencia: string;
+  observacoes?: string;
+  created_at?: string;
+};
+
+export type MedicamentoInput = {
+  vaca_id: number;
+  nome_medicamento: string;
+  data_aplicacao: string;
+  dias_carencia: number;
+  observacoes?: string;
+};
+
 export type DashboardStats = {
   producao: {
     media_diaria: number;

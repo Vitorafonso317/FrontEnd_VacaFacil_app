@@ -4,7 +4,7 @@ import {
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { createReproducao } from '../services/reproducaoService';
+import { createReproducao, updateReproducao } from '../services/reproducaoService';
 import type { ReproducaoEvent } from '../types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
@@ -64,12 +64,20 @@ export default function ReproducaoModal({ visible, onClose, onSaved, cowId, cowN
     }
     setSaving(true);
     try {
-      await createReproducao({
-        vaca_id: cowId,
-        tipo_evento: tipo.trim(),
-        data,
-        observacoes: observacoes.trim() || undefined,
-      });
+      if (editing) {
+        await updateReproducao(editing.id, {
+          tipo_evento: tipo.trim(),
+          data,
+          observacoes: observacoes.trim() || undefined,
+        });
+      } else {
+        await createReproducao({
+          vaca_id: cowId,
+          tipo_evento: tipo.trim(),
+          data,
+          observacoes: observacoes.trim() || undefined,
+        });
+      }
       onSaved();
     } catch (e: any) {
       Alert.alert('Erro ao salvar', e.message);
@@ -85,7 +93,7 @@ export default function ReproducaoModal({ visible, onClose, onSaved, cowId, cowN
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <View style={s.handle} />
-            <Text style={s.title}>Evento Reprodutivo</Text>
+            <Text style={s.title}>{editing ? 'Editar Evento' : 'Evento Reprodutivo'}</Text>
             <Text style={s.subtitle}>{cowName}</Text>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -155,7 +163,7 @@ export default function ReproducaoModal({ visible, onClose, onSaved, cowId, cowN
               >
                 {saving
                   ? <ActivityIndicator color={colors.onPrimary} />
-                  : <Text style={s.saveBtnTxt}>SALVAR EVENTO</Text>
+                  : <Text style={s.saveBtnTxt}>{editing ? 'SALVAR ALTERAÇÕES' : 'SALVAR EVENTO'}</Text>
                 }
               </TouchableOpacity>
 

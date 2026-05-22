@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  StyleSheet, TextInput, RefreshControl,
+  StyleSheet, TextInput, RefreshControl, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,6 +29,12 @@ export default function Producao() {
   const cowMap = useMemo(() => {
     const map: Record<number, string> = {};
     (vacas as Cow[]).forEach(c => { map[c.id] = c.nome; });
+    return map;
+  }, [vacas]);
+
+  const cowPhotoMap = useMemo(() => {
+    const map: Record<number, string | undefined> = {};
+    (vacas as Cow[]).forEach(c => { map[c.id] = c.foto_url; });
     return map;
   }, [vacas]);
 
@@ -108,18 +114,25 @@ export default function Producao() {
             tintColor={colors.primary}
           />
         }
-        renderItem={({ item }) => (
-          <View style={s.card}>
-            <View style={s.cardIcon}>
-              <MaterialIcons name="agriculture" size={22} color={colors.primary} />
+        renderItem={({ item }) => {
+          const nome = cowMap[item.vaca_id] ?? `Vaca #${item.vaca_id}`;
+          const foto = cowPhotoMap[item.vaca_id];
+          return (
+            <View style={s.card}>
+              <View style={s.cardIcon}>
+                {foto
+                  ? <Image source={{ uri: foto }} style={s.cardAvatar} />
+                  : <Text style={s.cardInitial}>{nome.charAt(0).toUpperCase()}</Text>
+                }
+              </View>
+              <View style={s.cardInfo}>
+                <Text style={s.cardName}>{nome}</Text>
+                <Text style={s.cardSub}>{item.data}</Text>
+              </View>
+              <Text style={s.cardValue}>{item.litros} L</Text>
             </View>
-            <View style={s.cardInfo}>
-              <Text style={s.cardName}>{cowMap[item.vaca_id] ?? `Vaca #${item.vaca_id}`}</Text>
-              <Text style={s.cardSub}>{item.data}</Text>
-            </View>
-            <Text style={s.cardValue}>{item.litros} L</Text>
-          </View>
-        )}
+          );
+        }}
         ListEmptyComponent={
           <View style={s.empty}>
             <MaterialIcons name="show-chart" size={48} color={colors.borderLight} />
@@ -181,6 +194,12 @@ const s = StyleSheet.create({
     width: 48, height: 48, borderRadius: 8,
     backgroundColor: colors.surfaceContainerHighest,
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cardAvatar: { width: 48, height: 48, borderRadius: 8 },
+  cardInitial: {
+    fontSize: 20, fontWeight: '700', fontFamily: fonts.bold,
+    color: colors.primary,
   },
   cardInfo: { flex: 1 },
   cardName: { fontSize: 14, fontWeight: '700', fontFamily: fonts.bold, color: colors.text },

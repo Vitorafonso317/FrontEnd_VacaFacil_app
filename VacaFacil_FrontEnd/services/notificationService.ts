@@ -2,10 +2,11 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SETTINGS_KEY = '@vacafacil:settings';
-const PROD_ID      = 'vf-daily-producao';
-const FIN_ID       = 'vf-weekly-financeiro';
-const EVT_PREFIX   = 'vf-event-';
+const SETTINGS_KEY  = '@vacafacil:settings';
+const PROD_ID       = 'vf-daily-producao';
+const FIN_ID        = 'vf-weekly-financeiro';
+const EVT_PREFIX    = 'vf-event-';
+const PARTO_PREFIX  = 'vf-parto-';
 
 // Chama fora de qualquer componente para que notificações funcionem em background
 export function setupNotificationHandler() {
@@ -126,6 +127,92 @@ export async function scheduleEventReminders(
       const label = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
       await schedule(7, '7d', `Evento previsto para ${label}. Prepare-se com antecedência.`);
     }
+  }
+}
+
+// ─── Alertas de parto previsto (inseminação + 283 dias) ──────────────────────
+// Agenda alerta 7 dias antes da data prevista do parto
+
+export async function schedulePartoPrevisto(
+  inseminacoes: Array<{ id: number; vaca_nome: string; data: string }>
+) {
+  if (Platform.OS === 'web') return;
+
+  // Cancela alertas antigos de parto
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.allSettled(
+    scheduled
+      .filter(n => n.identifier.startsWith(PARTO_PREFIX))
+      .map(n => Notifications.cancelScheduledNotificationAsync(n.identifier))
+  );
+
+  if (inseminacoes.length === 0) return;
+  if (!(await hasPermission())) return;
+
+  const now = Date.now();
+
+  for (const ins of inseminacoes) {
+    const [y, m, d] = ins.data.split('-').map(Number);
+    const partoDate = new Date(y, m - 1, d + 283);
+    const alerta7d  = new Date(partoDate.getTime());
+    alerta7d.setDate(alerta7d.getDate() - 7);
+    alerta7d.setHours(8, 0, 0, 0);
+
+    if (alerta7d.getTime() <= now) continue;
+
+    const partoLabel = partoDate.toLocaleDateString('pt-BR');
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${PARTO_PREFIX}${ins.id}`,
+      content: {
+        title: `Parto Previsto — ${ins.vaca_nome}`,
+        body: `O parto está previsto para ${partoLabel}. Prepare o curral de maternidade!`,
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: alerta7d,
+      },
+    }).catch(() => {});
+  }
+}
+
+// ─── Alerta de fim de carência ────────────────────────────────────────────────
+// Agenda notificação para o dia em que o leite fica liberado
+
+const CARENCIA_PREFIX = 'vf-carencia-';
+
+export async function scheduleCarenciaFim(
+  carencias: Array<{ id: number; vaca_nome: string; data_fim_carencia: string }>
+) {
+  if (Platform.OS === 'web') return;
+
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.allSettled(
+    scheduled
+      .filter(n => n.identifier.startsWith(CARENCIA_PREFIX))
+      .map(n => Notifications.cancelScheduledNotificationAsync(n.identifier))
+  );
+
+  if (carencias.length === 0) return;
+  if (!(await hasPermission())) return;
+
+  const now = Date.now();
+
+  for (const c of carencias) {
+    const trigger = new Date(c.data_fim_carencia + 'T08:00:00');
+    if (trigger.getTime() <= now) continue;
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${CARENCIA_PREFIX}${c.id}`,
+      content: {
+        title: `Leite Liberado — ${c.vaca_nome}`,
+        body: `O período de carência terminou. O leite de ${c.vaca_nome} pode ser comercializado a partir de hoje!`,
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: trigger,
+      },
+    }).catch(() => {});
   }
 }
 

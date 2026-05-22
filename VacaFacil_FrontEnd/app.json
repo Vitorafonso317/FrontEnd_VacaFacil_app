@@ -35,7 +35,8 @@
           "photosPermission": "O VacaFácil precisa acessar sua galeria para adicionar fotos.",
           "cameraPermission": "O VacaFácil precisa da câmera para tirar fotos."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "router": {},

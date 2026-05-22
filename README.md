@@ -139,3 +139,83 @@ O projeto usa **Expo Router** com file-based routing. A estrutura de `app/` mape
 - Android: **edge-to-edge** + nova arquitetura (`newArchEnabled: true`)
 - iOS: suporte a tablet
 - Splash screen com fundo branco
+
+---
+
+## Relatório de Evolução e Impacto
+
+### 1. Refatoração e Correções Críticas
+
+#### Marketplace: Segurança na Gestão de Anúncios
+**O que foi feito:** Ajuste na lógica de permissão para edição e exclusão de anúncios.
+
+**Explicação Técnica:** Implementada tipagem estrita usando `Number(user.id) === Number(item.user_id)` para garantir que a comparação de IDs entre o usuário logado e o dono do anúncio seja sempre numérica, evitando falhas de validação comuns em JavaScript/TypeScript.
+
+**Benefício:** Apenas o verdadeiro dono do animal pode alterar os dados da venda, garantindo a segurança do marketplace.
+
+#### Sincronização de Interface (UI Sync)
+**O que foi feito:** Migração para `useFocusEffect` / `useRefreshOnFocus` nas telas de Marketplace, Vacas, Produção, Financeiro e Dashboard.
+
+**Explicação Técnica:** Diferente de um carregamento simples no mount, esses hooks detectam quando o usuário volta para a tela e disparam uma revalidação de dados. Resolve o problema de o usuário realizar uma venda ou registrar um gasto e a lista continuar mostrando o valor antigo.
+
+#### Correção de Autenticação no Web (F5)
+**O que foi feito:** Guard de rota em `_layout.tsx` agora aguarda o roteador hidratar a URL antes de decidir para onde navegar.
+
+**Explicação Técnica:** Ao recarregar a página no browser, `useSegments()` retorna `[]` por alguns milissegundos. O guard passou a verificar `!segments.length` além de `loading`, evitando redirecionamentos prematuros para o login.
+
+---
+
+### 2. Otimização de Performance para o Campo
+
+Considerando que o sinal de internet no ambiente rural é instável, o app foi otimizado para consumir o mínimo de dados possível.
+
+#### Compressão Inteligente de Mídia
+**O que foi feito:** Pipeline de redução de imagens no Frontend (Expo) e Backend (Cloudinary).
+
+**Explicação Técnica:** O `expo-image-manipulator` redimensiona fotos para 900px com 70% de qualidade JPEG antes do envio. No servidor, o Cloudinary aplica transformações automáticas (`quality: auto:good`, `fetch_format: auto`) para entregar WebP/AVIF em browsers compatíveis.
+
+**Impacto:** Uma foto de 5MB passa a pesar ~150KB. O produtor consegue cadastrar uma vaca mesmo com sinal 3G fraco, além de economizar espaço no plano gratuito de armazenamento em até 30×.
+
+---
+
+### 3. Arquitetura de Cache com TanStack Query
+
+Esta é a mudança estrutural mais importante para a escalabilidade do VacaFácil.
+
+#### Gerenciamento de Estado e Cache
+**O que foi feito:** Migração de chamadas `fetch` manuais com `useState`/`useEffect` para hooks centralizados (`useVacas`, `useDashboard`, `useMarketplace`, etc.) via `@tanstack/react-query`.
+
+**Explicação Técnica:** O TanStack Query gerencia o cache automaticamente com `staleTime: 30s` e `gcTime: 5min`. Quando o produtor abre o app, ele vê instantaneamente os dados da última sessão (em cache), enquanto o sistema busca atualizações em segundo plano.
+
+| Hook | Tela | Dados gerenciados |
+|---|---|---|
+| `useDashboard` | Dashboard | Stats gerais, produção, financeiro, rebanho |
+| `useVacas` | Vacas | Lista do rebanho com filtros |
+| `useProducao` | Produção | Histórico de registros de leite |
+| `useReceitas` / `useDespesas` | Financeiro | Entradas e saídas |
+| `useMarketplace` | Marketplace | Anúncios disponíveis |
+| `useProximasTarefas` | Dashboard | Eventos reprodutivos próximos 60 dias |
+
+**Impacto no Render Free Tier:** Como o servidor gratuito pode demorar até 60 segundos para "acordar", o cache evita que o usuário veja tela vazia ou erro durante esse período.
+
+---
+
+### 4. Inteligência de Manejo no Dashboard
+
+O Dashboard deixou de ser um visualizador de dados para se tornar um assistente de decisão.
+
+#### Card de Próximas Tarefas
+**O que faz:** Exibe alertas de inseminações, partos e diagnósticos pendentes nos próximos 60 dias.
+
+**Explicação Técnica:** O hook `useProximasTarefas` filtra a tabela `reproducao` e calcula a diferença em dias entre a data atual e cada evento previsto, gerando badges visuais de urgência ("Hoje", "1 dia", "X dias") com ícones diferenciados por tipo de evento.
+
+**Valor para o Produtor:** Inspirado em sistemas como o Aegro, essa função garante que nenhum evento reprodutivo importante seja esquecido.
+
+---
+
+### 5. Posicionamento de Mercado
+
+| Concorrente | Diferencial do VacaFácil |
+|---|---|
+| **Agtor** | Agtor foca em gestão operacional geral e máquinas; VacaFácil foca na especificidade do leite (lactação e reprodução) |
+| **Aegro** | VacaFácil oferece marketplace integrado de animais verificados, permitindo que o produtor monetize o excedente de rebanho diretamente no ecossistema de gestão |

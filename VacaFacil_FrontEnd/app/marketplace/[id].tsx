@@ -10,6 +10,7 @@ import request from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import type { ApiResponse, MarketplaceItem } from '../../types';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -258,7 +259,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6,
     backgroundColor: colors.onPrimaryContainer, borderRadius: 8,
   },
-  editBtnText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  editBtnText: { fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.primary },
   deleteBtn: { padding: 6 },
 
   /* Galeria */
@@ -286,28 +287,28 @@ const s = StyleSheet.create({
   body: { paddingHorizontal: 20, paddingTop: 20, gap: 14 },
 
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  title: { flex: 1, fontSize: 24, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   badge: {
     alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: colors.onPrimaryContainer,
     paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999,
   },
-  badgeText: { fontSize: 11, fontWeight: '700', color: colors.primaryContainer },
+  badgeText: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: colors.primaryContainer },
 
   priceCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight,
     padding: 16, gap: 4,
   },
-  priceLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
-  price: { fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.5 },
+  priceLabel: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5 },
+  price: { fontSize: 30, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, letterSpacing: -0.5 },
 
   descCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight,
     padding: 16, gap: 8,
   },
-  descLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
+  descLabel: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5 },
   desc: { fontSize: 16, color: colors.text, lineHeight: 24 },
 
   thumb: { width: 64, height: 64, borderRadius: 8, borderWidth: 2, borderColor: 'transparent' },
@@ -320,7 +321,7 @@ const s = StyleSheet.create({
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
     marginTop: 8,
   },
-  whatsappBtnText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  whatsappBtnText: { color: '#fff', fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold },
 
   contactBtn: {
     height: 56, backgroundColor: colors.primary, borderRadius: 12,
@@ -329,7 +330,7 @@ const s = StyleSheet.create({
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
     marginTop: 8,
   },
-  contactBtnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600' },
+  contactBtnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold },
 
   noContact: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

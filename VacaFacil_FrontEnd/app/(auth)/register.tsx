@@ -8,6 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { register, login } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -142,11 +143,11 @@ const s = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingBottom: 40 },
   header: { paddingTop: 32, paddingBottom: 8 },
   backBtn: { padding: 4, marginLeft: -4 },
-  title: { fontSize: 32, fontWeight: '700', color: colors.primary, marginBottom: 8, letterSpacing: -0.5 },
+  title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, marginBottom: 8, letterSpacing: -0.5 },
   subtitle: { fontSize: 16, color: colors.textSecondary, marginBottom: 32 },
   form: { gap: 24 },
   field: { gap: 4 },
-  label: { fontSize: 14, fontWeight: '700', color: colors.text, letterSpacing: 0.5, paddingHorizontal: 4 },
+  label: { fontSize: 14, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: 0.5, paddingHorizontal: 4 },
   input: {
     height: 56, backgroundColor: colors.surfaceContainerLow,
     borderBottomWidth: 2, borderBottomColor: colors.borderLight,
@@ -171,13 +172,13 @@ const s = StyleSheet.create({
   },
   checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   termsText: { flex: 1, fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-  termsLink: { color: colors.primary, fontWeight: '700' },
+  termsLink: { color: colors.primary, fontWeight: '700', fontFamily: fonts.bold },
   btn: {
     height: 56, backgroundColor: colors.primary, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', marginTop: 8,
   },
-  btnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', letterSpacing: 1 },
+  btnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 1 },
   loginLink: { alignItems: 'center', marginTop: 8 },
   loginText: { fontSize: 16, color: colors.textSecondary },
-  loginLinkText: { color: colors.primary, fontWeight: '700' },
+  loginLinkText: { color: colors.primary, fontWeight: '700', fontFamily: fonts.bold },
 });

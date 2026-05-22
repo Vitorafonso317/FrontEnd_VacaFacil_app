@@ -5,6 +5,12 @@ export function getProduction(page = 1, limit = 10) {
   return request<PaginatedResponse<ProductionRecord>>(`/producao?page=${page}&limit=${limit}`);
 }
 
+export function getProductionByCow(cowId: number, page = 1, limit = 30) {
+  return request<PaginatedResponse<ProductionRecord>>(
+    `/producao?vaca_id=${cowId}&page=${page}&limit=${limit}`
+  );
+}
+
 export function createProduction(data: ProductionInput) {
   return request<ApiResponse<ProductionRecord>>('/producao', {
     method: 'POST',

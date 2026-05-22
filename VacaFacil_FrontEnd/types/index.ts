@@ -93,6 +93,22 @@ export type MarketplaceItem = {
   created_at?: string;
 };
 
+export type ReproducaoEvent = {
+  id: number;
+  vaca_id: number;
+  tipo_evento: string;
+  data: string;
+  observacoes?: string;
+  created_at?: string;
+};
+
+export type ReproducaoInput = {
+  vaca_id: number;
+  tipo_evento: string;
+  data: string;
+  observacoes?: string;
+};
+
 export type MarketplaceInput = {
   titulo: string;
   descricao?: string;

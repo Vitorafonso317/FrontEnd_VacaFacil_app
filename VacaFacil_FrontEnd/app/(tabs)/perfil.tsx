@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { uploadFotoUsuario } from '../../services/uploadService';
 import { getDashboardStats, type DashboardStats } from '../../services/dashboardService';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 
 export default function Perfil() {
   const router = useRouter();
@@ -232,7 +233,7 @@ const s = StyleSheet.create({
     borderWidth: 2, borderColor: colors.surfaceContainerLowest,
     alignItems: 'center', justifyContent: 'center',
   },
-  userName: { fontSize: 32, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  userName: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.5 },
   farmRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   farmName: { fontSize: 16, color: colors.textSecondary },
   userEmail: { fontSize: 16, color: colors.border },
@@ -245,28 +246,28 @@ const s = StyleSheet.create({
     padding: 12, gap: 4,
   },
   bentoCardFull: { width: '100%' },
-  bentoLabel: { fontSize: 11, fontWeight: '700', color: colors.border, letterSpacing: 0.5 },
-  bentoValue: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  bentoLabel: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: colors.border, letterSpacing: 0.5 },
+  bentoValue: { fontSize: 24, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   premiumCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: colors.onPrimaryContainer + '33',
     borderColor: colors.onPrimaryContainer, padding: 16, borderRadius: 8, borderWidth: 1,
   },
-  premiumLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
-  premiumTitle: { fontSize: 16, fontWeight: '600', color: colors.primary, marginTop: 2 },
+  premiumLabel: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, letterSpacing: 0.5 },
+  premiumTitle: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.primary, marginTop: 2 },
 
   freeCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: colors.surfaceContainerLowest,
     borderColor: colors.borderLight, padding: 16, borderRadius: 8, borderWidth: 1,
   },
-  freeLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
-  freeTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 2 },
+  freeLabel: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5 },
+  freeTitle: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.text, marginTop: 2 },
   upgradeBtn: {
     backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 8,
     borderRadius: 999,
   },
-  upgradeBtnText: { fontSize: 13, fontWeight: '700', color: colors.onPrimary },
+  upgradeBtnText: { fontSize: 13, fontWeight: '700', fontFamily: fonts.bold, color: colors.onPrimary },
 
   actions: { gap: 12 },
   btnContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -274,24 +275,24 @@ const s = StyleSheet.create({
     height: 56, backgroundColor: colors.primary, borderRadius: 8,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
-  btnPrimaryText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
+  btnPrimaryText: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.onPrimary },
   btnSecondary: {
     height: 56, backgroundColor: colors.surfaceContainerLowest,
     borderWidth: 2, borderColor: colors.secondary, borderRadius: 8,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
-  btnSecondaryText: { fontSize: 16, fontWeight: '600', color: colors.secondary },
+  btnSecondaryText: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.secondary },
   btnOutline: {
     height: 56, backgroundColor: colors.surfaceContainerLowest,
     borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
-  btnOutlineText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  btnOutlineText: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.text },
   btnDanger: {
     height: 56, backgroundColor: colors.error, borderRadius: 8,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  btnDangerText: { fontSize: 16, fontWeight: '600', color: colors.onError },
+  btnDangerText: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.onError },
 
   version: { textAlign: 'center', fontSize: 12, color: colors.border },
 });

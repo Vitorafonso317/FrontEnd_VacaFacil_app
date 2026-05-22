@@ -1,68 +1,71 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet, TextInput, RefreshControl,
+  StyleSheet, TextInput, RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { getProduction } from '../../services/productionService';
-import { getCows } from '../../services/cattleService';
-import type { ProductionRecord, Cow } from '../../types';
+import { useQueryClient } from '@tanstack/react-query';
+import { useProducao, useVacas, useRefreshOnFocus, QK } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
+import { exportPdf, buildProductionReport } from '../../utils/pdf';
+import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 import ProductionModal from '../../components/ProductionModal';
 
 export default function Producao() {
-  const [records, setRecords] = useState<ProductionRecord[]>([]);
-  const [cowMap, setCowMap] = useState<Record<number, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  async function load(isRefresh = false) {
-    if (isRefresh) setRefreshing(true);
-    try {
-      const [prod, vacas] = await Promise.all([
-        getProduction(1, 50),
-        getCows(1, 100),
-      ]);
-      setRecords(prod.data);
-      const map: Record<number, string> = {};
-      vacas.data.forEach((c: Cow) => { map[c.id] = c.nome; });
-      setCowMap(map);
-    } catch (e: any) {
-      Alert.alert('Erro', e.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
+  const { data: prodResult, isLoading, isFetching, refetch } = useProducao();
+  const { data: vacas = [] } = useVacas(1, 100);
+  useRefreshOnFocus(QK.producao);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  const records = prodResult?.data ?? [];
+
+  const cowMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    (vacas as Cow[]).forEach(c => { map[c.id] = c.nome; });
+    return map;
+  }, [vacas]);
 
   const filtered = useMemo(() => records.filter(r => {
     const nome = cowMap[r.vaca_id] ?? '';
     return nome.toLowerCase().includes(search.toLowerCase()) || r.data?.includes(search);
   }), [records, cowMap, search]);
 
+  async function handleExport() {
+    setExporting(true);
+    const html = buildProductionReport(records, cowMap, user?.nome ?? 'Produtor');
+    await exportPdf(html, 'producao.pdf');
+    setExporting(false);
+  }
+
   const totalMensal = useMemo(() => records.reduce((acc, r) => acc + (r.litros ?? 0), 0), [records]);
   const vacasUnicas = useMemo(() => new Set(records.map(r => r.vaca_id)).size, [records]);
   const mediaPorVaca = vacasUnicas > 0 ? (totalMensal / vacasUnicas).toFixed(1) : '0';
 
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
+  if (isLoading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
 
   return (
     <View style={s.screen}>
-      {/* Header */}
       <View style={s.header}>
         <View style={s.headerTop}>
           <View>
             <Text style={s.labelCap}>PRODUÇÃO DIÁRIA</Text>
             <Text style={s.title}>Histórico</Text>
           </View>
+          <TouchableOpacity onPress={handleExport} disabled={exporting} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            {exporting
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
+            }
+          </TouchableOpacity>
         </View>
 
-        {/* Bento resumo */}
         <View style={s.bentoRow}>
           <View style={s.bentoCard}>
             <MaterialIcons name="water-drop" size={22} color={colors.primary} />
@@ -77,7 +80,6 @@ export default function Producao() {
         </View>
       </View>
 
-      {/* Busca */}
       <View style={s.searchRow}>
         <View style={s.searchBox}>
           <MaterialIcons name="search" size={20} color={colors.textSecondary} />
@@ -100,8 +102,8 @@ export default function Producao() {
         windowSize={7}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => load(true)}
+            refreshing={isFetching}
+            onRefresh={refetch}
             colors={[colors.primary]}
             tintColor={colors.primary}
           />
@@ -127,7 +129,6 @@ export default function Producao() {
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
 
-      {/* FAB */}
       <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={() => setModalVisible(true)}>
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.fabText}>Registrar Produção</Text>
@@ -136,7 +137,10 @@ export default function Producao() {
       <ProductionModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        onSaved={load}
+        onSaved={() => {
+          setModalVisible(false);
+          queryClient.invalidateQueries({ queryKey: QK.producao });
+        }}
       />
     </View>
   );
@@ -145,9 +149,9 @@ export default function Producao() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, gap: 16 },
-  headerTop: { flexDirection: 'row', alignItems: 'flex-end' },
-  labelCap: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
-  title: { fontSize: 32, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  labelCap: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5 },
+  title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.5 },
 
   bentoRow: { flexDirection: 'row', gap: 12 },
   bentoCard: {
@@ -155,8 +159,8 @@ const s = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight,
     padding: 12, gap: 4,
   },
-  bentoValue: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  bentoLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  bentoValue: { fontSize: 24, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
+  bentoLabel: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary },
 
   searchRow: { paddingHorizontal: 20, marginBottom: 8 },
   searchBox: {
@@ -179,9 +183,9 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   cardInfo: { flex: 1 },
-  cardName: { fontSize: 14, fontWeight: '700', color: colors.text },
+  cardName: { fontSize: 14, fontWeight: '700', fontFamily: fonts.bold, color: colors.text },
   cardSub: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
-  cardValue: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  cardValue: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary },
 
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 16, color: colors.textSecondary },
@@ -193,5 +197,5 @@ const s = StyleSheet.create({
     borderRadius: 999, shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6,
   },
-  fabText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
+  fabText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold },
 });

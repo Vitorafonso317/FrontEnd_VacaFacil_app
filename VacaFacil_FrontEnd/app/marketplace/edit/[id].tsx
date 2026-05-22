@@ -1,35 +1,67 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator, StyleSheet,
+  ScrollView, Alert, ActivityIndicator, StyleSheet, Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import request from '../../../services/api';
+import { uploadFotoAnuncio } from '../../../services/uploadService';
 import type { ApiResponse, MarketplaceItem, MarketplaceInput } from '../../../types';
 import { colors } from '../../../constants/colors';
+
+const MAX_IMAGES = 3;
 
 export default function EditarAnuncio() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [form, setForm] = useState({ titulo: '', descricao: '', preco: '', contato: '' });
+  const [existingFotos, setExistingFotos] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     request<ApiResponse<MarketplaceItem>>(`/marketplace/${id}`)
-      .then(res => setForm({
-        titulo: res.data.titulo ?? '',
-        descricao: res.data.descricao ?? '',
-        preco: String(res.data.preco ?? ''),
-        contato: res.data.contato ?? '',
-      }))
+      .then(res => {
+        setForm({
+          titulo: res.data.titulo ?? '',
+          descricao: res.data.descricao ?? '',
+          preco: String(res.data.preco ?? ''),
+          contato: res.data.contato ?? '',
+        });
+        setExistingFotos(res.data.fotos ?? []);
+      })
       .catch(e => Alert.alert('Erro', e.message))
       .finally(() => setLoading(false));
   }, [id]);
 
   function set(field: keyof typeof form, value: string) {
     setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  const totalImages = existingFotos.length + newImages.length;
+
+  async function pickImage() {
+    if (totalImages >= MAX_IMAGES) {
+      Alert.alert('Limite atingido', `Máximo de ${MAX_IMAGES} fotos por anúncio.`);
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permissão necessária', 'Permita o acesso à galeria nas configurações.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'] as any,
+      quality: 0.75,
+      allowsEditing: true,
+      aspect: [4, 3],
+    });
+    if (!result.canceled && result.assets[0]) {
+      setNewImages(prev => [...prev, result.assets[0].uri]);
+    }
   }
 
   async function handleSave() {
@@ -41,16 +73,26 @@ export default function EditarAnuncio() {
 
     setSaving(true);
     try {
-      const payload: Partial<MarketplaceInput> = {
+      // Envia fotos existentes atualizadas — backend remove do Cloudinary as que foram deletadas
+      const payload: Partial<MarketplaceInput> & { fotos?: string[] } = {
         titulo: form.titulo.trim(),
         descricao: form.descricao.trim() || undefined,
         preco: precoNum,
         contato: form.contato.trim() || undefined,
+        fotos: existingFotos,
       };
       await request<ApiResponse<null>>(`/marketplace/${id}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
       });
+
+      // Faz upload das novas imagens escolhidas pelo usuário
+      if (newImages.length > 0) {
+        await Promise.allSettled(
+          newImages.map(uri => uploadFotoAnuncio(Number(id), uri))
+        );
+      }
+
       router.back();
     } catch (e: any) {
       Alert.alert('Erro ao salvar', e.message);
@@ -73,6 +115,43 @@ export default function EditarAnuncio() {
       <Text style={s.subtitle}>Atualize as informações do seu anúncio.</Text>
 
       <View style={s.form}>
+
+        {/* Fotos do anúncio */}
+        <View style={s.field}>
+          <Text style={s.label}>FOTOS DO ANIMAL ({totalImages}/{MAX_IMAGES})</Text>
+          <View style={s.imageGrid}>
+            {existingFotos.map((url, i) => (
+              <View key={`ex-${i}`} style={s.imageTile}>
+                <Image source={{ uri: url }} style={s.imageTileImg} resizeMode="cover" />
+                <TouchableOpacity
+                  style={s.removeBtn}
+                  onPress={() => setExistingFotos(prev => prev.filter((_, j) => j !== i))}
+                >
+                  <MaterialIcons name="close" size={14} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            {newImages.map((uri, i) => (
+              <View key={`new-${i}`} style={s.imageTile}>
+                <Image source={{ uri }} style={s.imageTileImg} resizeMode="cover" />
+                <TouchableOpacity
+                  style={s.removeBtn}
+                  onPress={() => setNewImages(prev => prev.filter((_, j) => j !== i))}
+                >
+                  <MaterialIcons name="close" size={14} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            {totalImages < MAX_IMAGES && (
+              <TouchableOpacity style={s.addImageTile} onPress={pickImage} activeOpacity={0.7}>
+                <MaterialIcons name="add-photo-alternate" size={28} color={colors.textSecondary} />
+                <Text style={s.addImageText}>Adicionar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Título */}
         <View style={s.field}>
           <Text style={s.label}>TÍTULO *</Text>
           <TextInput
@@ -83,6 +162,7 @@ export default function EditarAnuncio() {
           />
         </View>
 
+        {/* Descrição */}
         <View style={s.field}>
           <Text style={s.label}>DESCRIÇÃO</Text>
           <TextInput
@@ -94,6 +174,7 @@ export default function EditarAnuncio() {
           />
         </View>
 
+        {/* Preço */}
         <View style={s.field}>
           <Text style={s.label}>PREÇO (R$) *</Text>
           <TextInput
@@ -104,6 +185,7 @@ export default function EditarAnuncio() {
           />
         </View>
 
+        {/* Contato */}
         <View style={s.field}>
           <Text style={s.label}>CONTATO (WhatsApp ou e-mail)</Text>
           <TextInput
@@ -134,6 +216,8 @@ export default function EditarAnuncio() {
   );
 }
 
+const TILE = 92;
+
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
   content: { paddingHorizontal: 20, paddingBottom: 40 },
@@ -145,6 +229,24 @@ const s = StyleSheet.create({
   form: { gap: 24 },
   field: { gap: 6 },
   label: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5, paddingHorizontal: 2 },
+
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  imageTile: { width: TILE, height: TILE, borderRadius: 8, overflow: 'hidden', position: 'relative' },
+  imageTileImg: { width: '100%', height: '100%' },
+  removeBtn: {
+    position: 'absolute', top: 4, right: 4,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  addImageTile: {
+    width: TILE, height: TILE, borderRadius: 8,
+    borderWidth: 1.5, borderColor: colors.borderLight, borderStyle: 'dashed',
+    backgroundColor: colors.surfaceContainerLow,
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  addImageText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+
   input: {
     height: 56, backgroundColor: colors.surfaceContainerLow,
     borderBottomWidth: 2, borderBottomColor: colors.borderLight,

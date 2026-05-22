@@ -6,6 +6,10 @@ import {
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  scheduleDailyProductionReminder,
+  scheduleWeeklyFinanceReminder,
+} from '../../services/notificationService';
 import { colors } from '../../constants/colors';
 
 const STORAGE_KEY = '@vacafacil:settings';
@@ -42,6 +46,8 @@ export default function Configuracoes() {
     setSettings(prev => {
       const next = { ...prev, [key]: !prev[key] };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      if (key === 'notifProducao')   scheduleDailyProductionReminder(next.notifProducao);
+      if (key === 'notifFinanceiro') scheduleWeeklyFinanceReminder(next.notifFinanceiro);
       return next;
     });
   }

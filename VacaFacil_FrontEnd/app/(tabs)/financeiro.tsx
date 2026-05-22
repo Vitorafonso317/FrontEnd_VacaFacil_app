@@ -1,13 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  Alert, StyleSheet, RefreshControl,
+  StyleSheet, RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { getReceitas, getDespesas } from '../../services/financialService';
-import type { FinancialRecord } from '../../types';
+import { useQueryClient } from '@tanstack/react-query';
+import { useReceitas, useDespesas, useRefreshOnFocus, QK } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
+import { exportPdf, buildFinancialReport } from '../../utils/pdf';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
 import TransactionModal from '../../components/TransactionModal';
 
@@ -15,30 +17,20 @@ type Tab = 'receitas' | 'despesas';
 
 export default function Financeiro() {
   const [tab, setTab] = useState<Tab>('receitas');
-  const [receitas, setReceitas] = useState<FinancialRecord[]>([]);
-  const [despesas, setDespesas] = useState<FinancialRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  async function load(isRefresh = false) {
-    if (isRefresh) setRefreshing(true); else setLoading(true);
-    try {
-      const [r, d] = await Promise.all([
-        getReceitas(1, 50),
-        getDespesas(1, 50),
-      ]);
-      setReceitas(r.data);
-      setDespesas(d.data);
-    } catch (e: any) {
-      Alert.alert('Erro', e.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
+  const { data: receitasResult, isLoading: rLoading, isFetching: rFetching, refetch: rRefetch } = useReceitas();
+  const { data: despesasResult, isLoading: dLoading, isFetching: dFetching, refetch: dRefetch } = useDespesas();
+  useRefreshOnFocus(QK.receitas);
+  useRefreshOnFocus(QK.despesas);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  const loading = rLoading || dLoading;
+  const isFetching = rFetching || dFetching;
+  const receitas = receitasResult?.data ?? [];
+  const despesas = despesasResult?.data ?? [];
 
   const totalReceitas = receitas.reduce((acc, r) => acc + (r.valor ?? 0), 0);
   const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor ?? 0), 0);
@@ -46,9 +38,24 @@ export default function Financeiro() {
   const records = tab === 'receitas' ? receitas : despesas;
   const isReceita = tab === 'receitas';
 
+  async function handleExport() {
+    setExporting(true);
+    const html = buildFinancialReport(receitas, despesas, user?.nome ?? 'Produtor');
+    await exportPdf(html, 'financeiro.pdf');
+    setExporting(false);
+  }
+
   return (
     <View style={s.screen}>
-      {/* Bento Grid */}
+      <View style={s.header}>
+        <Text style={s.screenTitle}>Financeiro</Text>
+        <TouchableOpacity onPress={handleExport} disabled={exporting} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          {exporting
+            ? <ActivityIndicator size="small" color={colors.primary} />
+            : <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
+          }
+        </TouchableOpacity>
+      </View>
       <View style={s.bentoSection}>
         <View style={[s.card, s.cardFull]}>
           <Text style={s.labelCap}>SALDO ATUAL</Text>
@@ -91,7 +98,6 @@ export default function Financeiro() {
         </View>
       </View>
 
-      {/* Tabs */}
       <View style={s.tabsRow}>
         <TouchableOpacity
           style={[s.tabBtn, tab === 'receitas' && s.tabBtnActive]}
@@ -119,8 +125,8 @@ export default function Financeiro() {
           windowSize={7}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => load(true)}
+              refreshing={isFetching}
+              onRefresh={() => { rRefetch(); dRefetch(); }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
@@ -153,7 +159,6 @@ export default function Financeiro() {
         />
       )}
 
-      {/* FAB */}
       <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={() => setModalVisible(true)}>
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.fabText}>Nova Transação</Text>
@@ -162,7 +167,11 @@ export default function Financeiro() {
       <TransactionModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        onSaved={load}
+        onSaved={() => {
+          setModalVisible(false);
+          queryClient.invalidateQueries({ queryKey: QK.receitas });
+          queryClient.invalidateQueries({ queryKey: QK.despesas });
+        }}
       />
     </View>
   );
@@ -170,6 +179,11 @@ export default function Financeiro() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4,
+  },
+  screenTitle: { fontSize: 24, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   bentoSection: { padding: 20, gap: 12 },
   bentoRow: { flexDirection: 'row', gap: 12 },
   card: {
@@ -179,11 +193,11 @@ const s = StyleSheet.create({
   cardFull: {},
   cardHalf: { flex: 1 },
   cardIconRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  labelCap: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
-  saldo: { fontSize: 32, fontWeight: '700', color: colors.primary, letterSpacing: -0.5 },
-  valueH2: { fontSize: 22, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  labelCap: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5 },
+  saldo: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, letterSpacing: -0.5 },
+  valueH2: { fontSize: 22, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   trendRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  trendText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  trendText: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary },
 
   tabsRow: {
     flexDirection: 'row', marginHorizontal: 20, marginBottom: 8,
@@ -191,7 +205,7 @@ const s = StyleSheet.create({
   },
   tabBtn: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
   tabBtnActive: { backgroundColor: colors.surfaceContainerLowest },
-  tabText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
+  tabText: { fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textSecondary },
   tabTextActive: { color: colors.primaryContainer },
 
   list: { paddingHorizontal: 20, gap: 8 },
@@ -203,9 +217,9 @@ const s = StyleSheet.create({
   },
   transIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   transInfo: { flex: 1 },
-  transTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  transTitle: { fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.text },
   transSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  transValue: { fontSize: 18, fontWeight: '700' },
+  transValue: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold },
 
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 16, color: colors.textSecondary },
@@ -217,5 +231,5 @@ const s = StyleSheet.create({
     borderRadius: 999, shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6,
   },
-  fabText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
+  fabText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold },
 });

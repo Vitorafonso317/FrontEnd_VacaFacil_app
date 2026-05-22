@@ -1,19 +1,37 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl, Alert,
+  StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { getDashboardStats, type DashboardStats } from '../../services/dashboardService';
+import { useDashboard, useVacas, useProximasTarefas, useRefreshOnFocus, QK } from '../../hooks/queries';
+import { scheduleEventReminders } from '../../services/notificationService';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
 
 const DAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
 
-// Gera alturas das barras a partir da média diária real
-// Dias passados variam ±15% em torno da média, dias futuros (IA) sobem levemente
+const EVENTO_ICON: Record<string, 'science' | 'child-friendly' | 'medical-services' | 'event'> = {
+  inseminação: 'science',
+  inseminacao: 'science',
+  parto: 'child-friendly',
+  diagnóstico: 'medical-services',
+  diagnostico: 'medical-services',
+};
+
+function getDaysLeft(dateStr: string) {
+  const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
+  return diff <= 0 ? 'Hoje' : diff === 1 ? '1 dia' : `${diff} dias`;
+}
+
+function fmtDate(dateStr: string) {
+  const [, m, d] = dateStr.split('-');
+  return `${d}/${m}`;
+}
+
 function buildBarHeights(mediaDiaria: number): number[] {
   if (mediaDiaria === 0) return [40, 45, 42, 50, 55, 58, 56];
   const base = mediaDiaria;
@@ -21,7 +39,7 @@ function buildBarHeights(mediaDiaria: number): number[] {
   const forecast = [1.03, 1.06, 1.04].map(f => base * f);
   const all = [...past, ...forecast];
   const max = Math.max(...all);
-  return all.map(v => Math.round((v / max) * 90) + 10); // normaliza entre 10–100
+  return all.map(v => Math.round((v / max) * 90) + 10);
 }
 
 function SkeletonBox({ width, height }: { width: number | string; height: number }) {
@@ -33,35 +51,25 @@ function SkeletonBox({ width, height }: { width: number | string; height: number
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    try {
-      const data = await getDashboardStats();
-      setStats(data);
-    } catch (e: any) {
-      Alert.alert('Erro ao carregar dashboard', e.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const { data: stats, isLoading: loading, isFetching, refetch } = useDashboard(!authLoading);
+  const { data: tarefas = [] } = useProximasTarefas();
+  const { data: vacas = [] } = useVacas();
+  useRefreshOnFocus(QK.dashboard);
 
   useEffect(() => {
-    if (!authLoading) load();
-  }, [load, authLoading]);
+    if (tarefas.length > 0) scheduleEventReminders(tarefas as any[]);
+  }, [tarefas]);
+
+  const vacaMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    (vacas as any[]).forEach(v => { map[v.id] = v.nome; });
+    return map;
+  }, [vacas]);
 
   const barHeights = stats ? buildBarHeights(stats.producao.media_diaria) : null;
-
-  // Pega as 2 últimas vacas com produção para a lista de manejo
   const ultimasVacas = stats?.relatorio.registros.slice(0, 2) ?? [];
-
   const saldoAtual = stats?.financeiro?.saldo ?? 0;
-
-  // Variação de produção: compara média com previsão/7
   const variacaoProducao = stats && stats.producao.base_registros > 1
     ? (((stats.producao.previsao_proximos_7_dias / 7) - stats.producao.media_diaria) / stats.producao.media_diaria * 100).toFixed(1)
     : null;
@@ -72,22 +80,19 @@ export default function Dashboard() {
       contentContainerStyle={s.content}
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => load(true)}
+          refreshing={isFetching}
+          onRefresh={refetch}
           colors={[colors.primary]}
           tintColor={colors.primary}
         />
       }
     >
-      {/* Saudação */}
       <View style={s.welcome}>
         <Text style={s.welcomeTitle}>Olá, {user?.nome ?? 'Produtor'}!</Text>
         <Text style={s.welcomeSub}>Confira o desempenho da sua fazenda hoje.</Text>
       </View>
 
-      {/* Bento Grid */}
       <View style={s.bentoGrid}>
-        {/* Card Produção — full width */}
         <TouchableOpacity
           style={[s.card, s.cardFull]}
           activeOpacity={0.8}
@@ -132,7 +137,6 @@ export default function Dashboard() {
           </View>
         </TouchableOpacity>
 
-        {/* Card Financeiro */}
         <TouchableOpacity
           style={[s.card, s.cardHalf]}
           activeOpacity={0.8}
@@ -146,7 +150,6 @@ export default function Dashboard() {
           }
         </TouchableOpacity>
 
-        {/* Card Rebanho */}
         <TouchableOpacity
           style={[s.card, s.cardHalf]}
           activeOpacity={0.8}
@@ -214,7 +217,7 @@ export default function Dashboard() {
         )}
       </View>
 
-      {/* Manejo do Rebanho */}
+      {/* Últimas Produções */}
       <View style={s.section}>
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Últimas Produções</Text>
@@ -257,6 +260,40 @@ export default function Dashboard() {
           ))
         )}
       </View>
+      {/* Próximas Tarefas */}
+      <View style={s.section}>
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionTitle}>Próximas Tarefas</Text>
+          <Text style={s.sectionCaption}>Próximos 60 dias</Text>
+        </View>
+
+        {tarefas.length === 0 ? (
+          <View style={s.emptyState}>
+            <MaterialIcons name="event-available" size={36} color={colors.borderLight} />
+            <Text style={s.emptyText}>Nenhum evento agendado.</Text>
+          </View>
+        ) : (
+          tarefas.slice(0, 5).map((item: any) => {
+            const icon = EVENTO_ICON[item.tipo_evento?.toLowerCase()] ?? 'event';
+            return (
+              <View key={item.id} style={s.listItem}>
+                <View style={[s.listIcon, { backgroundColor: colors.surfaceContainerHighest }]}>
+                  <MaterialIcons name={icon} size={20} color={colors.secondary} />
+                </View>
+                <View style={s.listInfo}>
+                  <Text style={s.listTitle}>{item.tipo_evento}</Text>
+                  <Text style={s.listSub}>
+                    {vacaMap[item.vaca_id] ?? `Vaca #${item.vaca_id}`} • {fmtDate(item.data)}
+                  </Text>
+                </View>
+                <View style={s.daysLeftBadge}>
+                  <Text style={s.daysLeftText}>{getDaysLeft(item.data)}</Text>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -266,7 +303,7 @@ const s = StyleSheet.create({
   content: { padding: 20, gap: 24, paddingBottom: 32 },
 
   welcome: { gap: 4 },
-  welcomeTitle: { fontSize: 32, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  welcomeTitle: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.5 },
   welcomeSub: { fontSize: 16, color: colors.textSecondary },
 
   bentoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
@@ -278,17 +315,17 @@ const s = StyleSheet.create({
   cardFull: { width: '100%' },
   cardHalf: { flex: 1, minWidth: 140 },
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
+  cardLabel: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5 },
   valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 4 },
-  valueLarge: { fontSize: 32, fontWeight: '700', color: colors.primary, letterSpacing: -0.5 },
+  valueLarge: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, letterSpacing: -0.5 },
   valueUnit: { fontSize: 16, color: colors.primary, opacity: 0.8 },
-  valueH2: { fontSize: 22, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  valueH2: { fontSize: 22, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   iconBox: { padding: 8, backgroundColor: colors.surfaceContainer, borderRadius: 8 },
   trendRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  trendText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  trendText: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary },
 
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   chartLoading: { height: 80, alignItems: 'center', justifyContent: 'center' },
   chartEmpty: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   chartEmptyText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
@@ -300,9 +337,9 @@ const s = StyleSheet.create({
     backgroundColor: colors.primaryContainer + '33',
     borderWidth: 1, borderColor: colors.primaryContainer, borderBottomWidth: 0,
   },
-  barLabel: { fontSize: 9, fontWeight: '700', color: colors.primary, marginBottom: 2 },
+  barLabel: { fontSize: 9, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, marginBottom: 2 },
   chartDays: { flexDirection: 'row', justifyContent: 'space-between' },
-  dayLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, flex: 1, textAlign: 'center' },
+  dayLabel: { fontSize: 10, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, flex: 1, textAlign: 'center' },
   forecastSummary: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: colors.surfaceContainerLow,
@@ -312,7 +349,14 @@ const s = StyleSheet.create({
 
   section: { gap: 12 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  seeAll: { fontSize: 14, color: colors.primary, fontWeight: '600' },
+  seeAll: { fontSize: 14, color: colors.primary, fontWeight: '600', fontFamily: fonts.semiBold },
+  sectionCaption: { fontSize: 12, color: colors.textSecondary },
+
+  daysLeftBadge: {
+    backgroundColor: colors.onPrimaryContainer,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
+  },
+  daysLeftText: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: colors.primaryContainer },
 
   listItem: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -326,13 +370,13 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   listInfo: { flex: 1 },
-  listTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  listTitle: { fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.text },
   listSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  listValue: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  listValue: { fontSize: 15, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary },
 
   emptyState: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   emptyText: { fontSize: 15, color: colors.textSecondary },
-  emptyLink: { fontSize: 15, color: colors.primary, fontWeight: '600' },
+  emptyLink: { fontSize: 15, color: colors.primary, fontWeight: '600', fontFamily: fonts.semiBold },
 
   skeleton: { backgroundColor: colors.surfaceContainerHigh },
 });

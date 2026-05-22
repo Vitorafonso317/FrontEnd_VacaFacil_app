@@ -8,6 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { login } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -116,7 +117,7 @@ const s = StyleSheet.create({
     borderColor: colors.borderLight,
     marginBottom: 16,
   },
-  appName: { fontSize: 32, fontWeight: '700', color: colors.primary, letterSpacing: -0.5 },
+  appName: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, letterSpacing: -0.5 },
   tagline: { fontSize: 16, color: colors.textSecondary, marginTop: 4 },
 
   card: {
@@ -132,6 +133,7 @@ const s = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.textSecondary,
     letterSpacing: 0.5,
     paddingHorizontal: 4,
@@ -155,13 +157,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnPrimaryText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600' },
+  btnPrimaryText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold },
 
   links: { alignItems: 'center', gap: 16 },
-  linkPrimary: { fontSize: 16, color: colors.primary, fontWeight: '600' },
+  linkPrimary: { fontSize: 16, color: colors.primary, fontWeight: '600', fontFamily: fonts.semiBold },
   divider: { width: '100%', height: 1, backgroundColor: colors.borderLight },
   linkMuted: { fontSize: 16, color: colors.textSecondary },
-  linkSecondary: { color: colors.secondary, fontWeight: '700' },
+  linkSecondary: { color: colors.secondary, fontWeight: '700', fontFamily: fonts.bold },
 
   imageBox: {
     width: '100%',

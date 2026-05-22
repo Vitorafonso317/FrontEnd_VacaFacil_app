@@ -1,14 +1,18 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
   Alert, StyleSheet, TextInput, RefreshControl, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
-import { getCows, deleteCow } from '../../services/cattleService';
+import { deleteCow } from '../../services/cattleService';
+import { useVacas, useRefreshOnFocus, QK } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
+import { exportPdf, buildCowsReport } from '../../utils/pdf';
 import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
+import { fonts } from '../../constants/fonts';
 import ProductionModal from '../../components/ProductionModal';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -31,28 +35,23 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 
 export default function Vacas() {
-  const [cows, setCows] = useState<Cow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
   const [quickCow, setQuickCow] = useState<Cow | null>(null);
+  const [exporting, setExporting] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  async function load(isRefresh = false) {
-    if (isRefresh) setRefreshing(true);
-    try {
-      const res = await getCows();
-      setCows(res.data);
-    } catch (e: any) {
-      Alert.alert('Erro', e.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const { data: cows = [], isLoading, isFetching, refetch } = useVacas();
+  useRefreshOnFocus(QK.vacas);
+
+  async function handleExport() {
+    setExporting(true);
+    const html = buildCowsReport(cows as Cow[], user?.nome ?? 'Produtor');
+    await exportPdf(html, 'rebanho.pdf');
+    setExporting(false);
   }
-
-  useFocusEffect(useCallback(() => { load(); }, []));
 
   async function handleDelete(id: number) {
     Alert.alert('Excluir vaca', 'Tem certeza?', [
@@ -61,12 +60,12 @@ export default function Vacas() {
         text: 'Excluir', style: 'destructive', onPress: async () => {
           try {
             await deleteCow(id);
-            setCows(prev => prev.filter(c => c.id !== id));
+            queryClient.invalidateQueries({ queryKey: QK.vacas });
           } catch (e: any) {
             Alert.alert('Erro', e.message);
           }
-        }
-      }
+        },
+      },
     ]);
   }
 
@@ -79,17 +78,23 @@ export default function Vacas() {
     return matchText && matchStatus;
   }), [cows, search, statusFilter]);
 
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
+  if (isLoading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
 
   return (
     <View style={s.screen}>
-      {/* Header */}
       <View style={s.header}>
-        <Text style={s.title}>Minhas Vacas</Text>
+        <View style={s.headerRow}>
+          <Text style={s.title}>Minhas Vacas</Text>
+          <TouchableOpacity onPress={handleExport} disabled={exporting} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            {exporting
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
+            }
+          </TouchableOpacity>
+        </View>
         <Text style={s.subtitle}>Gerencie seu rebanho e monitore a produtividade individual.</Text>
       </View>
 
-      {/* Busca */}
       <View style={s.searchRow}>
         <View style={s.searchBox}>
           <MaterialIcons name="search" size={20} color={colors.textSecondary} />
@@ -103,7 +108,6 @@ export default function Vacas() {
         </View>
       </View>
 
-      {/* Filtros por status */}
       <View style={s.chipsRow}>
         {STATUS_FILTERS.map(f => (
           <TouchableOpacity
@@ -126,8 +130,8 @@ export default function Vacas() {
         windowSize={7}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => load(true)}
+            refreshing={isFetching}
+            onRefresh={refetch}
             colors={[colors.primary]}
             tintColor={colors.primary}
           />
@@ -160,7 +164,6 @@ export default function Vacas() {
                 </Text>
               </View>
 
-              {/* Registro rápido de leite */}
               <TouchableOpacity
                 style={s.quickBtn}
                 onPress={() => setQuickCow(item)}
@@ -182,13 +185,11 @@ export default function Vacas() {
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
 
-      {/* Botão adicionar */}
       <TouchableOpacity style={s.addBtn} onPress={() => router.push('/vacas/create')} activeOpacity={0.85}>
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.addBtnText}>Adicionar Vaca</Text>
       </TouchableOpacity>
 
-      {/* Modal de registro rápido de leite */}
       <ProductionModal
         visible={!!quickCow}
         onClose={() => setQuickCow(null)}
@@ -203,7 +204,8 @@ export default function Vacas() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, gap: 4 },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: -0.3 },
   subtitle: { fontSize: 16, color: colors.textSecondary },
 
   searchRow: { paddingHorizontal: 20, marginBottom: 10 },
@@ -221,7 +223,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLow,
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  chipText: { fontSize: 13, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textSecondary },
   chipTextActive: { color: colors.onPrimary },
 
   list: { paddingHorizontal: 20, gap: 12 },
@@ -239,11 +241,11 @@ const s = StyleSheet.create({
   },
   cardInfo: { flex: 1, gap: 4 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cowName: { fontSize: 14, fontWeight: '700', color: colors.text },
+  cowName: { fontSize: 14, fontWeight: '700', fontFamily: fonts.bold, color: colors.text },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  badgeText: { fontSize: 10, fontWeight: '700' },
+  badgeText: { fontSize: 10, fontWeight: '700', fontFamily: fonts.bold },
   cowMeta: { fontSize: 14, color: colors.textSecondary },
-  metaBold: { fontWeight: '700' },
+  metaBold: { fontWeight: '700', fontFamily: fonts.bold },
 
   quickBtn: {
     width: 40, height: 40, backgroundColor: colors.primary,
@@ -260,5 +262,5 @@ const s = StyleSheet.create({
     shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  addBtnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600' },
+  addBtnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold },
 });

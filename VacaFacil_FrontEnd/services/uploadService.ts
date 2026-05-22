@@ -1,21 +1,34 @@
 import { Platform } from 'react-native';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { getToken } from './api';
 import { BASE_URL } from '../constants/config';
 
+// Resize to max 900px on longest side and compress to ~70% quality
+// Typical result: 2-5 MB → 80-200 KB (20-30x smaller)
+async function compressImage(uri: string): Promise<string> {
+  if (Platform.OS === 'web') return uri; // web handles via blob fetch
+
+  const imageRef = await ImageManipulator
+    .manipulate(uri)
+    .resize({ width: 900 })
+    .renderAsync();
+  const result = await imageRef.saveAsync({ compress: 0.7, format: SaveFormat.JPEG });
+  return result.uri;
+}
+
 async function uploadImagem(endpoint: string, imageUri: string, urlField = 'foto_url'): Promise<string> {
   const token = getToken();
-  const ext = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+  const compressed = await compressImage(imageUri);
 
   const formData = new FormData();
   if (Platform.OS === 'web') {
-    const blob = await fetch(imageUri).then(r => r.blob());
-    formData.append('foto', blob, `foto-${Date.now()}.${ext}`);
+    const blob = await fetch(compressed).then(r => r.blob());
+    formData.append('foto', blob, `foto-${Date.now()}.jpg`);
   } else {
     formData.append('foto', {
-      uri: imageUri,
-      name: `foto-${Date.now()}.${ext}`,
-      type: mimeType,
+      uri: compressed,
+      name: `foto-${Date.now()}.jpg`,
+      type: 'image/jpeg',
     } as any);
   }
 

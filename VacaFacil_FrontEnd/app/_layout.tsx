@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { View, Platform, Text } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import {
   setupNotificationHandler,
@@ -17,25 +20,31 @@ import {
 } from '@expo-google-fonts/inter';
 import { fonts } from '../constants/fonts';
 
-// Aplica Inter como fonte padrão em todos os Text do app
 (Text as any).defaultProps = (Text as any).defaultProps ?? {};
 (Text as any).defaultProps.style = [
   { fontFamily: fonts.regular },
   (Text as any).defaultProps.style,
 ];
 
-// Configura handler antes de qualquer render para receber notificações em background
 setupNotificationHandler();
+
+const CACHE_MAX_AGE = 24 * 60 * 60_000; // 24 horas
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      gcTime: 5 * 60_000,
+      gcTime: CACHE_MAX_AGE,
       retry: 1,
       refetchOnWindowFocus: false,
     },
   },
+});
+
+const persister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: '@vacafacil:query-cache',
+  throttleTime: 1_000,
 });
 
 function RootNavigator() {
@@ -44,7 +53,6 @@ function RootNavigator() {
   const router = useRouter();
 
   useEffect(() => {
-    // Aguarda auth carregar E o roteador hidratar a URL (segments não vazio)
     if (loading || !segments.length) return;
     const inAuth = segments[0] === '(auth)';
     if (!token && !inAuth) router.replace('/(auth)/login');
@@ -58,7 +66,6 @@ function RootNavigator() {
     }
   }, []);
 
-  // Bloqueia a Stack enquanto o auth não resolveu — evita flash de rota errada no web
   if (loading) return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
@@ -75,10 +82,19 @@ export default function RootLayout() {
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: CACHE_MAX_AGE,
+        dehydrateOptions: {
+          shouldDehydrateQuery: query => query.state.status === 'success',
+        },
+      }}
+    >
       <AuthProvider>
         <RootNavigator />
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

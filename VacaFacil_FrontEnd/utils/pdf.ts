@@ -1,7 +1,7 @@
 import { Platform, Alert } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import type { Cow, ProductionRecord, FinancialRecord } from '../types';
+import type { Cow, ProductionRecord, FinancialRecord, ReproducaoEvent, Medicamento } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -164,6 +164,119 @@ export function buildProductionReport(
            <div class="sum-row"><span class="sum-lbl">Vacas com Registro</span><span class="sum-val">${vacasUnicas}</span></div>
            <div class="sum-row"><span class="sum-lbl">Total de Registros</span><span class="sum-val">${records.length}</span></div>
          </div>`
+    }
+  `);
+}
+
+// ─── Ficha Completa da Vaca ───────────────────────────────────────────────────
+
+export function buildCowReport(
+  cow: Cow,
+  producao: ProductionRecord[],
+  reproducao: ReproducaoEvent[],
+  tratamento: Medicamento | null | undefined,
+  userName: string,
+): string {
+  const today = new Date().toLocaleDateString('pt-BR');
+
+  const STATUS_LABEL: Record<string, [string, string]> = {
+    saudavel:   ['b-ativa', 'Ativa'],
+    ativa:      ['b-ativa', 'Ativa'],
+    seca:       ['b-seca',  'Seca'],
+    tratamento: ['b-trat',  'Tratamento'],
+  };
+  const [stCls, stLabel] = STATUS_LABEL[cow.status_saude?.toLowerCase() ?? ''] ?? ['b-ativa', 'Ativa'];
+
+  const totalLitros = producao.reduce((s, r) => s + (r.litros ?? 0), 0);
+  const mediaLitros = producao.length ? (totalLitros / producao.length).toFixed(1) : '—';
+
+  const insem = [...reproducao]
+    .filter(e => e.tipo_evento?.toLowerCase().includes('insemina'))
+    .sort((a, b) => b.data.localeCompare(a.data))[0];
+  let partoHtml = '';
+  if (insem) {
+    const [y, m, d] = insem.data.split('-').map(Number);
+    const partoDate = new Date(y, m - 1, d + 283);
+    const dias = Math.ceil((partoDate.getTime() - Date.now()) / 86_400_000);
+    const label = dias < 0
+      ? `<span style="color:#ba1a1a">Atrasado ${Math.abs(dias)} dias (${partoDate.toLocaleDateString('pt-BR')})</span>`
+      : dias === 0
+        ? `<span style="color:#0d631b"><strong>Hoje!</strong></span>`
+        : `Em <strong>${dias} dias</strong> — ${partoDate.toLocaleDateString('pt-BR')}`;
+    partoHtml = `<div class="sum-row"><span class="sum-lbl">Parto Previsto</span><span>${label}</span></div>`;
+  }
+
+  const carenciaHtml = tratamento
+    ? `<div style="background:#ffdad6;border:1px solid #ba1a1a;border-radius:6px;padding:10px 14px;margin-bottom:16px;">
+         <strong style="color:#ba1a1a">EM CARÊNCIA — LEITE DESCARTÁVEL</strong><br/>
+         <span style="font-size:12px;">${tratamento.nome_medicamento} · liberado em ${new Date(tratamento.data_fim_carencia + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+       </div>`
+    : '';
+
+  const prodRows = producao.map(r => `
+    <tr>
+      <td>${fmtDate(r.data)}</td>
+      <td><strong>${r.litros} L</strong></td>
+      <td>${r.observacoes ?? '—'}</td>
+    </tr>
+  `).join('');
+
+  const reproRows = reproducao.map(e => `
+    <tr>
+      <td>${fmtDate(e.data)}</td>
+      <td>${e.tipo_evento}</td>
+      <td>${e.observacoes ?? '—'}</td>
+    </tr>
+  `).join('');
+
+  return template(`
+    <p class="logo">VacaFácil</p>
+    <p class="meta">Ficha da Vaca &bull; Gerado em ${today} &bull; ${userName}</p>
+    <hr/>
+
+    <div class="summary" style="margin-bottom:16px;">
+      <div class="sum-row">
+        <span class="sum-lbl">Nome</span>
+        <span class="sum-val">${cow.nome}</span>
+      </div>
+      <div class="sum-row">
+        <span class="sum-lbl">Raça</span>
+        <span>${cow.raca ?? '—'}</span>
+      </div>
+      <div class="sum-row">
+        <span class="sum-lbl">Idade / Peso</span>
+        <span>${cow.idade != null ? cow.idade + ' anos' : '—'} / ${cow.peso != null ? cow.peso + ' kg' : '—'}</span>
+      </div>
+      <div class="sum-row">
+        <span class="sum-lbl">Status</span>
+        <span><span class="badge ${stCls}">${stLabel}</span></span>
+      </div>
+      ${partoHtml}
+    </div>
+
+    ${carenciaHtml}
+
+    <p class="section">Produção de Leite</p>
+    ${producao.length === 0
+      ? '<p class="empty">Nenhum registro de produção.</p>'
+      : `<table>
+           <thead><tr><th>Data</th><th>Litros</th><th>Observações</th></tr></thead>
+           <tbody>${prodRows}</tbody>
+         </table>
+         <div class="summary">
+           <div class="sum-row"><span class="sum-lbl">Total de Registros</span><span class="sum-val">${producao.length}</span></div>
+           <div class="sum-row"><span class="sum-lbl">Total de Litros</span><span class="sum-val">${totalLitros.toLocaleString('pt-BR')} L</span></div>
+           <div class="sum-row"><span class="sum-lbl">Média por Registro</span><span class="sum-val">${mediaLitros} L</span></div>
+         </div>`
+    }
+
+    <p class="section">Eventos Reprodutivos</p>
+    ${reproducao.length === 0
+      ? '<p class="empty">Nenhum evento registrado.</p>'
+      : `<table>
+           <thead><tr><th>Data</th><th>Evento</th><th>Observações</th></tr></thead>
+           <tbody>${reproRows}</tbody>
+         </table>`
     }
   `);
 }

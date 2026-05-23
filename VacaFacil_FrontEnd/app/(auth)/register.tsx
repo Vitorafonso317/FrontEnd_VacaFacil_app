@@ -48,7 +48,7 @@ export default function Register() {
 
     try {
       const res = await login(emailNorm, password);
-      await signIn(res.data.token, res.data.user);
+      await signIn(res.data.token, res.data.user, res.data.refreshToken);
     } catch (e: any) {
       setLoading(false);
       Alert.alert(

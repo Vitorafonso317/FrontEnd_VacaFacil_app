@@ -6,7 +6,16 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "vacafacil",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/d9bb7f61-3047-4686-a2bc-f84b31e208d2",
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
@@ -22,7 +31,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.foaozin.VacaFacil_FrontEnd"
+      "package": "com.foaozin.VacaFacil_FrontEnd",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,13 +48,22 @@
           "cameraPermission": "O VacaFácil precisa da câmera para tirar fotos."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0d631b",
+          "sounds": []
+        }
+      ]
     ],
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "6523eaf4-bc2f-4433-bf4e-914c23956482"
+        "projectId": "d9bb7f61-3047-4686-a2bc-f84b31e208d2"
       }
-    }
+    },
+    "owner": "vitor_afonso"
   }
 }

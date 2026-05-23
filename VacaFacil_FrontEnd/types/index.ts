@@ -25,6 +25,7 @@ export type User = {
 
 export type AuthPayload = {
   token: string;
+  refreshToken: string;
   user: User;
 };
 

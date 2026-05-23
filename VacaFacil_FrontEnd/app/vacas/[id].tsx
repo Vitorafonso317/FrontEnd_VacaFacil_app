@@ -11,6 +11,8 @@ import { getCow, deleteCow } from '../../services/cattleService';
 import { uploadFotoVaca } from '../../services/uploadService';
 import { deleteReproducao } from '../../services/reproducaoService';
 import { deleteMedicamento } from '../../services/medicamentosService';
+import { buildCowReport, exportPdf } from '../../utils/pdf';
+import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import {
   useProducaoByCow, useReproducao, useEstaEmCarencia, QK,
@@ -58,8 +60,10 @@ export default function CowDetail() {
   const cowId = Number(id);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const [uploading, setUploading] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [prodModal, setProdModal] = useState(false);
   const [reproModal, setReproModal] = useState(false);
   const [saudeModal, setSaudeModal] = useState(false);
@@ -101,6 +105,23 @@ export default function CowDetail() {
   }, [producaoData, reproData]);
 
   const loading = cowLoading || prodLoading || reproLoading || carenciaLoading;
+
+  async function handleExportPdf() {
+    if (!cow) return;
+    setExportingPdf(true);
+    try {
+      const html = buildCowReport(
+        cow,
+        producaoData as ProductionRecord[],
+        reproData as ReproducaoEvent[],
+        tratamento ?? null,
+        user?.nome ?? 'Produtor',
+      );
+      await exportPdf(html, `ficha-${cow.nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   async function handleDelete() {
     Alert.alert('Excluir vaca', `Deseja excluir ${cow?.nome}?`, [
@@ -204,9 +225,16 @@ export default function CowDetail() {
         <TouchableOpacity onPress={() => router.back()} style={s.topBtn}>
           <MaterialIcons name="arrow-back" size={24} color={colors.primaryContainer} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleDelete} style={s.topBtn}>
-          <MaterialIcons name="delete-outline" size={24} color={colors.error} />
-        </TouchableOpacity>
+        <View style={s.topRight}>
+          <TouchableOpacity onPress={handleExportPdf} style={s.topBtn} disabled={exportingPdf}>
+            {exportingPdf
+              ? <ActivityIndicator size="small" color={colors.primaryContainer} />
+              : <MaterialIcons name="picture-as-pdf" size={24} color={colors.primaryContainer} />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDelete} style={s.topBtn}>
+            <MaterialIcons name="delete-outline" size={24} color={colors.error} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Hero */}
@@ -468,9 +496,10 @@ const s = StyleSheet.create({
   content: { paddingBottom: 48 },
 
   topBar: {
-    flexDirection: 'row', justifyContent: 'space-between',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8,
   },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   topBtn: { padding: 4 },
 
   hero: {

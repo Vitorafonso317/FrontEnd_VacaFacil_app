@@ -26,7 +26,7 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await login(emailNorm, password);
-      await signIn(res.data.token, res.data.user);
+      await signIn(res.data.token, res.data.user, res.data.refreshToken);
     } catch (e: any) {
       Alert.alert('Erro', e.message);
     } finally {

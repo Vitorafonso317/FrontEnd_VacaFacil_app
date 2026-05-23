@@ -91,6 +91,8 @@ export type MarketplaceItem = {
   user_id: number;
   vaca_id?: number;
   fotos?: string[];
+  latitude?: number;
+  longitude?: number;
   created_at?: string;
 };
 
@@ -117,6 +119,8 @@ export type MarketplaceInput = {
   categoria?: string;
   contato?: string;
   vaca_id?: number;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type Medicamento = {

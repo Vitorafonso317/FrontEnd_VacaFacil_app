@@ -8,6 +8,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AccessibilityProvider } from '../context/AccessibilityContext';
 import {
   setupNotificationHandler,
   setupAndroidChannel,
@@ -22,11 +23,9 @@ import {
 } from '@expo-google-fonts/inter';
 import { fonts } from '../constants/fonts';
 
+// Base font family — AccessibilityContext updates this when large text is toggled
 (Text as any).defaultProps = (Text as any).defaultProps ?? {};
-(Text as any).defaultProps.style = [
-  { fontFamily: fonts.regular },
-  (Text as any).defaultProps.style,
-];
+(Text as any).defaultProps.style = [{ fontFamily: fonts.regular }];
 
 setupNotificationHandler();
 
@@ -102,19 +101,21 @@ export default function RootLayout() {
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister,
-        maxAge: CACHE_MAX_AGE,
-        dehydrateOptions: {
-          shouldDehydrateQuery: query => query.state.status === 'success',
-        },
-      }}
-    >
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
-    </PersistQueryClientProvider>
+    <AccessibilityProvider>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: CACHE_MAX_AGE,
+          dehydrateOptions: {
+            shouldDehydrateQuery: query => query.state.status === 'success',
+          },
+        }}
+      >
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </PersistQueryClientProvider>
+    </AccessibilityProvider>
   );
 }

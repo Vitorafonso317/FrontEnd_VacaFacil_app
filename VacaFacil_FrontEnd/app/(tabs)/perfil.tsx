@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
+import { useA11y } from '../../context/AccessibilityContext';
 import { uploadFotoUsuario } from '../../services/uploadService';
 import { getDashboardStats, type DashboardStats } from '../../services/dashboardService';
 import { colors } from '../../constants/colors';
@@ -15,6 +16,7 @@ import { fonts } from '../../constants/fonts';
 export default function Perfil() {
   const router = useRouter();
   const { user, signOut, updateUser } = useAuth();
+  const { isLargeText, toggleLargeText } = useA11y();
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
@@ -181,6 +183,19 @@ export default function Perfil() {
           <MaterialIcons name="chevron-right" size={22} color={colors.onPrimary} />
         </TouchableOpacity>
 
+        <TouchableOpacity style={s.btnOutline} activeOpacity={0.85} onPress={toggleLargeText}>
+          <View style={s.btnContent}>
+            <MaterialIcons name="text-fields" size={22} color={colors.text} />
+            <View>
+              <Text style={s.btnOutlineText}>Texto Grande</Text>
+              <Text style={s.btnSubtext}>Aumenta fontes e botões</Text>
+            </View>
+          </View>
+          <View style={[s.toggle, isLargeText && s.toggleOn]}>
+            <View style={[s.toggleKnob, isLargeText && s.toggleKnobOn]} />
+          </View>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={s.btnSecondary}
           activeOpacity={0.85}
@@ -295,4 +310,19 @@ const s = StyleSheet.create({
   btnDangerText: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.onError },
 
   version: { textAlign: 'center', fontSize: 12, color: colors.border },
+
+  btnSubtext: { fontSize: 11, color: colors.textSecondary, marginTop: 1 },
+  toggle: {
+    width: 44, height: 24, borderRadius: 12,
+    backgroundColor: colors.borderLight,
+    padding: 2, justifyContent: 'center',
+  },
+  toggleOn: { backgroundColor: colors.primary },
+  toggleKnob: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2, shadowRadius: 2, elevation: 2,
+  },
+  toggleKnobOn: { alignSelf: 'flex-end' },
 });

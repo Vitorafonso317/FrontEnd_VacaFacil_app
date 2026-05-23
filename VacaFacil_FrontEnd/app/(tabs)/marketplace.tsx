@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator,
   StyleSheet, TouchableOpacity, RefreshControl,
@@ -6,17 +6,19 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useMarketplace, useRefreshOnFocus, QK } from '../../hooks/queries';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
 import type { MarketplaceItem } from '../../types';
 
-type QuickFilter = 'todos' | 'verificado' | 'com_foto';
+type QuickFilter = 'todos' | 'verificado' | 'com_foto' | 'perto';
 
 const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
   { key: 'verificado', label: 'Verificado' },
   { key: 'com_foto',   label: 'Com Foto'   },
+  { key: 'perto',      label: 'Perto de Mim' },
 ];
 
 function isPhoneContact(contato?: string | null): boolean {
@@ -25,16 +27,41 @@ function isPhoneContact(contato?: string | null): boolean {
   return digits.length >= 10 && digits.length <= 15;
 }
 
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function fmtDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 100) return `${km.toFixed(0)} km`;
+  return `${Math.round(km)} km`;
+}
+
 function applyFilters(
   items: MarketplaceItem[],
   search: string,
   quick: QuickFilter,
   priceMin: string,
   priceMax: string,
+  userCoords: { latitude: number; longitude: number } | null,
 ): MarketplaceItem[] {
   let result = items;
   if (quick === 'verificado') result = result.filter(i => !!i.vaca_id);
   if (quick === 'com_foto')   result = result.filter(i => i.fotos && i.fotos.length > 0);
+  if (quick === 'perto' && userCoords) {
+    result = result
+      .filter(i => i.latitude != null && i.longitude != null)
+      .sort((a, b) =>
+        distanceKm(userCoords.latitude, userCoords.longitude, a.latitude!, a.longitude!) -
+        distanceKm(userCoords.latitude, userCoords.longitude, b.latitude!, b.longitude!)
+      );
+  }
   const min = priceMin ? Number(priceMin) : null;
   const max = priceMax ? Number(priceMax) : null;
   if (min != null && !isNaN(min)) result = result.filter(i => i.preco >= min);
@@ -68,12 +95,37 @@ export default function Marketplace() {
   const [priceMin, setPriceMin]       = useState('');
   const [priceMax, setPriceMax]       = useState('');
   const [showPrice, setShowPrice]     = useState(false);
+  const [userCoords, setUserCoords]   = useState<{ latitude: number; longitude: number } | null>(null);
 
   useRefreshOnFocus(QK.marketplace);
 
+  useEffect(() => {
+    Location.getForegroundPermissionsAsync().then(({ status }) => {
+      if (status === 'granted') {
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+          .then(pos => setUserCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }))
+          .catch(() => {});
+      }
+    });
+  }, []);
+
+  async function requestAndSetLocation() {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Permita o acesso à localização para usar este filtro.');
+      return;
+    }
+    try {
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setUserCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível obter sua localização.');
+    }
+  }
+
   const filtered = useMemo(
-    () => applyFilters(items, search, quickFilter, priceMin, priceMax),
-    [items, search, quickFilter, priceMin, priceMax],
+    () => applyFilters(items, search, quickFilter, priceMin, priceMax, userCoords),
+    [items, search, quickFilter, priceMin, priceMax, userCoords],
   );
 
   const hasPriceFilter  = priceMin !== '' || priceMax !== '';
@@ -125,7 +177,12 @@ export default function Marketplace() {
           <TouchableOpacity
             key={f.key}
             style={[s.chip, quickFilter === f.key && s.chipActive]}
-            onPress={() => setQuickFilter(prev => prev === f.key ? 'todos' : f.key)}
+            onPress={async () => {
+              if (f.key === 'perto' && !userCoords && quickFilter !== 'perto') {
+                await requestAndSetLocation();
+              }
+              setQuickFilter(prev => prev === f.key ? 'todos' : f.key);
+            }}
             activeOpacity={0.7}
           >
             <Text style={[s.chipText, quickFilter === f.key && s.chipTextActive]}>
@@ -205,7 +262,11 @@ export default function Marketplace() {
           />
         }
         renderItem={({ item }) => (
-          <MarketplaceCard item={item} onPress={() => router.push(`/marketplace/${item.id}`)} />
+          <MarketplaceCard
+            item={item}
+            userCoords={userCoords}
+            onPress={() => router.push(`/marketplace/${item.id}`)}
+          />
         )}
         ListEmptyComponent={
           <View style={s.empty}>
@@ -237,12 +298,24 @@ export default function Marketplace() {
   );
 }
 
-function MarketplaceCard({ item, onPress }: { item: MarketplaceItem; onPress: () => void }) {
-  const foto      = item.fotos?.[0];
+function MarketplaceCard({
+  item,
+  onPress,
+  userCoords,
+}: {
+  item: MarketplaceItem;
+  onPress: () => void;
+  userCoords: { latitude: number; longitude: number } | null;
+}) {
+  const foto       = item.fotos?.[0];
   const isVerified = !!item.vaca_id;
-  const priceStr  = formatCurrency(item.preco);
-  const when      = fmtRelative(item.created_at);
-  const hasWA     = isPhoneContact(item.contato);
+  const priceStr   = formatCurrency(item.preco);
+  const when       = fmtRelative(item.created_at);
+  const hasWA      = isPhoneContact(item.contato);
+  const dist =
+    userCoords && item.latitude != null && item.longitude != null
+      ? fmtDistance(distanceKm(userCoords.latitude, userCoords.longitude, item.latitude, item.longitude))
+      : null;
 
   function handleWhatsApp() {
     const digits = item.contato!.replace(/\D/g, '');
@@ -284,7 +357,12 @@ function MarketplaceCard({ item, onPress }: { item: MarketplaceItem; onPress: ()
               <Text style={c.catText}>{item.categoria.toUpperCase()}</Text>
             </View>
           ) : null}
-          {when ? <Text style={c.when}>{when}</Text> : null}
+          {dist ? (
+            <View style={c.distBadge}>
+              <MaterialIcons name="place" size={10} color={colors.primary} />
+              <Text style={c.distText}>{dist}</Text>
+            </View>
+          ) : when ? <Text style={c.when}>{when}</Text> : null}
         </View>
 
         {/* Botão WhatsApp rápido */}
@@ -431,4 +509,11 @@ const c = StyleSheet.create({
     paddingVertical: 5, marginTop: 2,
   },
   waBtnText: { fontSize: 11, fontWeight: '700', fontFamily: fonts.bold, color: '#fff' },
+
+  distBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    backgroundColor: colors.onPrimaryContainer,
+    paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4,
+  },
+  distText: { fontSize: 10, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary },
 });

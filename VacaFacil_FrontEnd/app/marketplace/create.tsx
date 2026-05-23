@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import request from '../../services/api';
 import { getCows } from '../../services/cattleService';
 import { uploadFotoAnuncio } from '../../services/uploadService';
@@ -23,6 +24,8 @@ export default function CriarAnuncio() {
   const [images, setImages] = useState<string[]>([]);
   const [form, setForm] = useState({ titulo: '', descricao: '', preco: '', contato: '' });
   const [loading, setLoading] = useState(false);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   useEffect(() => {
     getCows(1, 100)
@@ -45,6 +48,24 @@ export default function CriarAnuncio() {
 
   function set(field: keyof typeof form, value: string) {
     setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  async function handleToggleLocation() {
+    if (location) { setLocation(null); return; }
+    setGettingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Permita o acesso à localização nas configurações.');
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível obter sua localização.');
+    } finally {
+      setGettingLocation(false);
+    }
   }
 
   async function pickImage() {
@@ -89,6 +110,8 @@ export default function CriarAnuncio() {
         categoria: 'Bovino',
         contato: form.contato.trim() || undefined,
         vaca_id: selectedCow.id,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
       };
       const res = await request<ApiResponse<MarketplaceItem>>('/marketplace', {
         method: 'POST',
@@ -263,6 +286,34 @@ export default function CriarAnuncio() {
           />
         </View>
 
+        {/* Localização */}
+        <View style={s.field}>
+          <Text style={s.label}>LOCALIZAÇÃO (opcional)</Text>
+          <TouchableOpacity
+            style={s.locationRow}
+            onPress={handleToggleLocation}
+            activeOpacity={0.7}
+            disabled={gettingLocation}
+          >
+            {gettingLocation ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialIcons
+                name={location ? 'location-on' : 'location-off'}
+                size={20}
+                color={location ? colors.primary : colors.textTertiary}
+              />
+            )}
+            <Text style={[s.locationText, !!location && s.locationTextOn]}>
+              {gettingLocation
+                ? 'Obtendo localização...'
+                : location
+                  ? 'Localização capturada — toque para remover'
+                  : 'Incluir localização no anúncio'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Categoria fixa */}
         <View style={s.categoryRow}>
           <MaterialIcons name="agriculture" size={16} color={colors.primary} />
@@ -366,6 +417,16 @@ const s = StyleSheet.create({
   categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 2 },
   categoryText: { fontSize: 13, color: colors.textSecondary },
   categoryValue: { fontWeight: '700', color: colors.primary },
+
+  locationRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    height: 52, backgroundColor: colors.surfaceContainerLow,
+    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
+    borderTopLeftRadius: 8, borderTopRightRadius: 8,
+    paddingHorizontal: 16,
+  },
+  locationText: { flex: 1, fontSize: 15, color: colors.textTertiary },
+  locationTextOn: { color: colors.primary, fontWeight: '600' },
 
   btn: {
     height: 56, backgroundColor: colors.primary, borderRadius: 12,

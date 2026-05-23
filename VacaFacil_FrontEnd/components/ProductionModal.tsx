@@ -4,8 +4,10 @@ import {
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { getCows } from '../services/cattleService';
 import { createProduction } from '../services/productionService';
+import { enqueueProduction } from '../services/offlineQueue';
 import type { Cow } from '../types';
 import { colors } from '../constants/colors';
 import { todayISO } from '../utils';
@@ -78,6 +80,19 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
     }
     setSaving(true);
     try {
+      const net = await NetInfo.fetch();
+      if (!net.isConnected) {
+        await enqueueProduction({
+          vaca_id: selectedCowId,
+          data,
+          litros: litrosNum,
+          observacoes: observacoes.trim() || undefined,
+        });
+        Alert.alert('Salvo offline', 'Sem conexão. O registro será enviado automaticamente quando a internet voltar.');
+        onSaved();
+        onClose();
+        return;
+      }
       await createProduction({
         vaca_id: selectedCowId,
         data,

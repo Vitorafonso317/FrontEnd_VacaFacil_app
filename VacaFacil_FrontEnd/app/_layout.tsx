@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { View, Platform, Text } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
+import { processQueue } from '../services/offlineQueue';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,6 +53,7 @@ function RootNavigator() {
   const { token, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const wasOffline = useRef(false);
 
   useEffect(() => {
     if (loading || !segments.length) return;
@@ -65,6 +68,23 @@ function RootNavigator() {
       restoreNotifications();
     }
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const unsub = NetInfo.addEventListener(state => {
+      const isOnline = !!state.isConnected && !!state.isInternetReachable;
+      if (isOnline && wasOffline.current) {
+        wasOffline.current = false;
+        processQueue().then(({ success }) => {
+          if (success > 0) {
+            queryClient.invalidateQueries({ queryKey: ['producao'] });
+          }
+        });
+      }
+      if (!isOnline) wasOffline.current = true;
+    });
+    return unsub;
+  }, [token]);
 
   if (loading) return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
 

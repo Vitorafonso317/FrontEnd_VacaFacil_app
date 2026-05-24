@@ -1,20 +1,28 @@
 import { useState, useEffect } from 'react';
 import {
-  Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
+  Modal, View, Text, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { createReceita, createDespesa } from '../services/financialService';
+import { createReceita, createDespesa, updateReceita, updateDespesa } from '../services/financialService';
+import AppInput from './AppInput';
+import { useToast } from '../context/ToastContext';
 import { colors } from '../constants/colors';
 import { todayISO } from '../utils';
+import type { FinancialRecord } from '../types';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   onSaved: () => void;
+  editRecord?: FinancialRecord;
+  editTipo?: 'receita' | 'despesa';
 };
 
-export default function TransactionModal({ visible, onClose, onSaved }: Props) {
-  const [tipo, setTipo] = useState<'receita' | 'despesa'>('receita');
+export default function TransactionModal({ visible, onClose, onSaved, editRecord, editTipo }: Props) {
+  const isEditing = !!editRecord;
+  const { showToast } = useToast();
+
+  const [tipo, setTipo] = useState<'receita' | 'despesa'>(editTipo ?? 'receita');
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [data, setData] = useState(todayISO());
@@ -22,11 +30,18 @@ export default function TransactionModal({ visible, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (!visible) return;
-    setTipo('receita');
-    setDescricao('');
-    setValor('');
-    setData(todayISO());
-  }, [visible]);
+    if (editRecord) {
+      setTipo(editTipo ?? 'receita');
+      setDescricao(editRecord.descricao ?? '');
+      setValor(String(editRecord.valor ?? ''));
+      setData(editRecord.data ?? todayISO());
+    } else {
+      setTipo('receita');
+      setDescricao('');
+      setValor('');
+      setData(todayISO());
+    }
+  }, [visible, editRecord]);
 
   function isValidDate(d: string) {
     return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
@@ -49,11 +64,20 @@ export default function TransactionModal({ visible, onClose, onSaved }: Props) {
     setSaving(true);
     try {
       const payload = { descricao: descricao.trim(), valor: valorNum, data };
-      if (tipo === 'receita') {
-        await createReceita(payload);
+      if (isEditing && editRecord) {
+        if (tipo === 'receita') {
+          await updateReceita(editRecord.id, payload);
+        } else {
+          await updateDespesa(editRecord.id, payload);
+        }
       } else {
-        await createDespesa(payload);
+        if (tipo === 'receita') {
+          await createReceita(payload);
+        } else {
+          await createDespesa(payload);
+        }
       }
+      showToast(isEditing ? 'Transação atualizada!' : `${tipo === 'receita' ? 'Receita' : 'Despesa'} registrada!`);
       onSaved();
       onClose();
     } catch (e: any) {
@@ -70,22 +94,23 @@ export default function TransactionModal({ visible, onClose, onSaved }: Props) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <View style={s.handle} />
-            <Text style={s.title}>Nova Transação</Text>
+            <Text style={s.title}>{isEditing ? 'Editar Transação' : 'Nova Transação'}</Text>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {/* Toggle Receita / Despesa */}
               <View style={s.toggle}>
                 <TouchableOpacity
-                  style={[s.toggleBtn, tipo === 'receita' && s.toggleBtnActive]}
-                  onPress={() => setTipo('receita')}
+                  style={[s.toggleBtn, tipo === 'receita' && s.toggleBtnActive, isEditing && s.toggleBtnLocked]}
+                  onPress={() => !isEditing && setTipo('receita')}
+                  activeOpacity={isEditing ? 1 : 0.7}
                 >
                   <Text style={[s.toggleText, tipo === 'receita' && s.toggleTextActive]}>
                     💰 Receita
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.toggleBtn, tipo === 'despesa' && s.toggleBtnActive]}
-                  onPress={() => setTipo('despesa')}
+                  style={[s.toggleBtn, tipo === 'despesa' && s.toggleBtnActive, isEditing && s.toggleBtnLocked]}
+                  onPress={() => !isEditing && setTipo('despesa')}
+                  activeOpacity={isEditing ? 1 : 0.7}
                 >
                   <Text style={[s.toggleText, tipo === 'despesa' && s.toggleTextActive]}>
                     📤 Despesa
@@ -93,33 +118,29 @@ export default function TransactionModal({ visible, onClose, onSaved }: Props) {
                 </TouchableOpacity>
               </View>
 
-              <Text style={s.label}>DESCRIÇÃO</Text>
-              <TextInput
-                style={s.input}
-                value={descricao}
-                onChangeText={setDescricao}
-                placeholder="Ex: Venda de leite"
-                placeholderTextColor={colors.textTertiary}
-              />
+              <View style={s.fields}>
+                <AppInput
+                  label="DESCRIÇÃO"
+                  value={descricao}
+                  onChangeText={setDescricao}
+                  placeholder="Ex: Venda de leite"
+                />
 
-              <Text style={s.label}>VALOR (R$)</Text>
-              <TextInput
-                style={s.input}
-                value={valor}
-                onChangeText={setValor}
-                placeholder="Ex: 1200,00"
-                placeholderTextColor={colors.textTertiary}
-                keyboardType="decimal-pad"
-              />
+                <AppInput
+                  label="VALOR (R$)"
+                  value={valor}
+                  onChangeText={setValor}
+                  placeholder="Ex: 1200,00"
+                  keyboardType="decimal-pad"
+                />
 
-              <Text style={s.label}>DATA</Text>
-              <TextInput
-                style={s.input}
-                value={data}
-                onChangeText={setData}
-                placeholder="AAAA-MM-DD"
-                placeholderTextColor={colors.textTertiary}
-              />
+                <AppInput
+                  label="DATA"
+                  value={data}
+                  onChangeText={setData}
+                  placeholder="AAAA-MM-DD"
+                />
+              </View>
 
               <TouchableOpacity
                 style={[s.saveBtn, saving && s.saveBtnDisabled]}
@@ -129,7 +150,7 @@ export default function TransactionModal({ visible, onClose, onSaved }: Props) {
               >
                 {saving
                   ? <ActivityIndicator color={colors.onPrimary} />
-                  : <Text style={s.saveBtnText}>SALVAR TRANSAÇÃO</Text>
+                  : <Text style={s.saveBtnText}>{isEditing ? 'SALVAR ALTERAÇÕES' : 'SALVAR TRANSAÇÃO'}</Text>
                 }
               </TouchableOpacity>
               <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
@@ -165,19 +186,11 @@ const s = StyleSheet.create({
     flex: 1, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 6,
   },
   toggleBtnActive: { backgroundColor: colors.surfaceContainerLowest },
+  toggleBtnLocked: { opacity: 0.6 },
   toggleText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
   toggleTextActive: { color: colors.primaryContainer },
 
-  label: {
-    fontSize: 12, fontWeight: '700', color: colors.textSecondary,
-    letterSpacing: 0.5, marginBottom: 6,
-  },
-  input: {
-    height: 52, backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
-    borderTopLeftRadius: 8, borderTopRightRadius: 8,
-    paddingHorizontal: 16, fontSize: 16, color: colors.text, marginBottom: 16,
-  },
+  fields: { gap: 16, marginBottom: 8 },
 
   saveBtn: {
     height: 56, backgroundColor: colors.primary, borderRadius: 12,

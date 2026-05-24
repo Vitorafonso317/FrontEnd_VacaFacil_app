@@ -14,6 +14,8 @@ import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import ProductionModal from '../../components/ProductionModal';
+import EmptyState from '../../components/EmptyState';
+import { SkeletonCowCard } from '../../components/Skeleton';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   saudavel: { bg: colors.onPrimaryContainer, text: colors.primaryContainer, label: 'Ativa' },
@@ -177,10 +179,13 @@ export default function Vacas() {
           );
         }}
         ListEmptyComponent={
-          <View style={s.empty}>
-            <MaterialIcons name="agriculture" size={48} color={colors.borderLight} />
-            <Text style={s.emptyText}>Nenhuma vaca cadastrada.</Text>
-          </View>
+          <EmptyState
+            icon="grass"
+            title={search ? 'Nenhuma vaca encontrada' : 'Rebanho vazio'}
+            subtitle={search ? 'Tente buscar por outro nome ou raça.' : 'Cadastre sua primeira vaca para começar a monitorar o rebanho.'}
+            
+            onAction={search ? undefined : () => router.push('/vacas/create')}
+          />
         }
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
@@ -251,9 +256,6 @@ const s = StyleSheet.create({
     width: 40, height: 40, backgroundColor: colors.primary,
     borderRadius: 8, alignItems: 'center', justifyContent: 'center',
   },
-
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 16, color: colors.textSecondary },
 
   addBtn: {
     position: 'absolute', bottom: 20, left: 20, right: 20,

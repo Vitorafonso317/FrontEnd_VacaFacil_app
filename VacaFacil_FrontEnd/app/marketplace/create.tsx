@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, StyleSheet, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import * as Location from 'expo-location';
 import request from '../../services/api';
 import { getCows } from '../../services/cattleService';
 import { uploadFotoAnuncio } from '../../services/uploadService';
+import AppInput from '../../components/AppInput';
 import type { ApiResponse, MarketplaceItem, MarketplaceInput, Cow } from '../../types';
 import { colors } from '../../constants/colors';
 
@@ -241,50 +242,44 @@ export default function CriarAnuncio() {
           </View>
         </View>
 
-        {/* Título */}
-        <View style={s.field}>
-          <Text style={s.label}>TÍTULO *</Text>
-          <TextInput
-            style={s.input} value={form.titulo} onChangeText={v => set('titulo', v)}
-            placeholder="Ex: Vaca Holandesa — 4 anos"
-            placeholderTextColor={colors.textTertiary}
-            autoCapitalize="sentences" maxLength={255}
-          />
-        </View>
+        <AppInput
+          label="TÍTULO *"
+          value={form.titulo}
+          onChangeText={v => set('titulo', v)}
+          placeholder="Ex: Vaca Holandesa — 4 anos"
+          autoCapitalize="sentences"
+          maxLength={255}
+        />
 
-        {/* Descrição */}
-        <View style={s.field}>
-          <Text style={s.label}>DESCRIÇÃO</Text>
-          <TextInput
-            style={[s.input, s.inputMultiline]}
-            value={form.descricao} onChangeText={v => set('descricao', v)}
-            placeholder="Descreva o animal, condições, histórico de produção..."
-            placeholderTextColor={colors.textTertiary}
-            multiline numberOfLines={3} textAlignVertical="top" maxLength={500}
-          />
-        </View>
+        <AppInput
+          label="DESCRIÇÃO"
+          value={form.descricao}
+          onChangeText={v => set('descricao', v)}
+          placeholder="Descreva o animal, condições, histórico de produção..."
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+          maxLength={500}
+          style={{ height: 88, paddingTop: 12 }}
+        />
 
-        {/* Preço */}
-        <View style={s.field}>
-          <Text style={s.label}>PREÇO (R$) *</Text>
-          <TextInput
-            style={s.input} value={form.preco} onChangeText={v => set('preco', v)}
-            placeholder="Ex: 4500,00"
-            placeholderTextColor={colors.textTertiary}
-            keyboardType="decimal-pad"
-          />
-        </View>
+        <AppInput
+          label="PREÇO (R$) *"
+          value={form.preco}
+          onChangeText={v => set('preco', v)}
+          placeholder="Ex: 4500,00"
+          keyboardType="decimal-pad"
+        />
 
-        {/* Contato */}
-        <View style={s.field}>
-          <Text style={s.label}>CONTATO (WhatsApp ou e-mail)</Text>
-          <TextInput
-            style={s.input} value={form.contato} onChangeText={v => set('contato', v)}
-            placeholder="Ex: 5531999999999 ou email@exemplo.com"
-            placeholderTextColor={colors.textTertiary}
-            autoCapitalize="none" keyboardType="email-address" maxLength={255}
-          />
-        </View>
+        <AppInput
+          label="CONTATO (WhatsApp ou e-mail)"
+          value={form.contato}
+          onChangeText={v => set('contato', v)}
+          placeholder="Ex: 5531999999999 ou email@exemplo.com"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          maxLength={255}
+        />
 
         {/* Localização */}
         <View style={s.field}>
@@ -405,14 +400,6 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
   addImageText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
-
-  input: {
-    height: 56, backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
-    borderTopLeftRadius: 8, borderTopRightRadius: 8,
-    paddingHorizontal: 16, fontSize: 16, color: colors.text,
-  },
-  inputMultiline: { height: 96, paddingTop: 14 },
 
   categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 2 },
   categoryText: { fontSize: 13, color: colors.textSecondary },

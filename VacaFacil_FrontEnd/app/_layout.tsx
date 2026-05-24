@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { View, Platform, Text } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { QueryClient } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 import { processQueue } from '../services/offlineQueue';
@@ -9,6 +10,7 @@ import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persi
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AccessibilityProvider } from '../context/AccessibilityContext';
+import { ToastProvider } from '../context/ToastContext';
 import {
   setupNotificationHandler,
   setupAndroidChannel,
@@ -26,6 +28,8 @@ import { fonts } from '../constants/fonts';
 // Base font family — AccessibilityContext updates this when large text is toggled
 (Text as any).defaultProps = (Text as any).defaultProps ?? {};
 (Text as any).defaultProps.style = [{ fontFamily: fonts.regular }];
+
+SplashScreen.preventAutoHideAsync();
 
 setupNotificationHandler();
 
@@ -98,7 +102,11 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
 
   return (
     <AccessibilityProvider>
@@ -113,7 +121,9 @@ export default function RootLayout() {
         }}
       >
         <AuthProvider>
-          <RootNavigator />
+          <ToastProvider>
+            <RootNavigator />
+          </ToastProvider>
         </AuthProvider>
       </PersistQueryClientProvider>
     </AccessibilityProvider>

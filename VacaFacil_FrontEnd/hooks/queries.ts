@@ -26,13 +26,13 @@ export const QK = {
   carencia:     ['carencia']        as const,
 } as const;
 
-// ─── Hook auxiliar: invalida a query ao focar na tela ───────────────────────
-// Exibe dados em cache instantaneamente e revalida em background
+// ─── Hook auxiliar: revalida a query ao focar na tela ────────────────────────
+// Respeita staleTime: só faz request se o dado estiver de fato expirado
 export function useRefreshOnFocus(queryKey: readonly string[]) {
   const queryClient = useQueryClient();
   useFocusEffect(
     useCallback(() => {
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.refetchQueries({ queryKey, type: 'active', stale: true });
     }, [queryClient, queryKey])
   );
 }
@@ -52,6 +52,8 @@ export function useVacas(page = 1, limit = 50) {
   return useQuery({
     queryKey: [...QK.vacas, page, limit],
     queryFn: () => getCows(page, limit).then(r => r.data),
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -60,6 +62,8 @@ export function useProducao(page = 1, limit = 50) {
   return useQuery({
     queryKey: [...QK.producao, page, limit],
     queryFn: () => getProduction(page, limit).then(r => ({ data: r.data, pagination: r.pagination })),
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -68,6 +72,8 @@ export function useReceitas(page = 1, limit = 50) {
   return useQuery({
     queryKey: [...QK.receitas, page, limit],
     queryFn: () => getReceitas(page, limit).then(r => ({ data: r.data, pagination: r.pagination })),
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -75,6 +81,8 @@ export function useDespesas(page = 1, limit = 50) {
   return useQuery({
     queryKey: [...QK.despesas, page, limit],
     queryFn: () => getDespesas(page, limit).then(r => ({ data: r.data, pagination: r.pagination })),
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -85,6 +93,8 @@ export function useMarketplace(page = 1, limit = 20) {
     queryFn: () =>
       request<PaginatedResponse<MarketplaceItem>>(`/marketplace?page=${page}&limit=${limit}`)
         .then(r => r.data),
+    staleTime: 3 * 60_000,
+    gcTime: 15 * 60_000,
   });
 }
 
@@ -94,6 +104,8 @@ export function useProducaoByCow(cowId: number) {
     queryKey: [...QK.producaoCow, cowId],
     queryFn: () => getProductionByCow(cowId, 1, 30).then(r => r.data),
     enabled: cowId > 0,
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
   });
 }
 

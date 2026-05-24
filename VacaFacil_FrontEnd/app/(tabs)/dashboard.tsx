@@ -14,6 +14,7 @@ import { scheduleEventReminders, schedulePartoPrevisto } from '../../services/no
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
+import Sparkline from '../../components/Sparkline';
 
 const DAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
 
@@ -89,6 +90,19 @@ export default function Dashboard() {
 
   const barHeights = stats ? buildBarHeights(stats.producao.media_diaria) : null;
   const ultimasVacas = stats?.relatorio.registros.slice(0, 2) ?? [];
+
+  const spark7days = useMemo(() => {
+    if (!stats?.relatorio.registros) return [];
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (6 - i));
+      const iso = d.toISOString().split('T')[0];
+      return stats.relatorio.registros
+        .filter(r => r.data === iso)
+        .reduce((sum, r) => sum + (r.litros ?? 0), 0);
+    });
+  }, [stats]);
   const saldoAtual = stats?.financeiro?.saldo ?? 0;
   const variacaoProducao = stats && stats.producao.base_registros > 1
     ? (((stats.producao.previsao_proximos_7_dias / 7) - stats.producao.media_diaria) / stats.producao.media_diaria * 100).toFixed(1)
@@ -122,14 +136,22 @@ export default function Dashboard() {
             <View>
               <Text style={s.cardLabel}>PRODUÇÃO DIÁRIA</Text>
               {loading ? (
-                <SkeletonBox width={120} height={36} />
-              ) : (
-                <View style={s.valueRow}>
-                  <Text style={s.valueLarge}>
-                    {stats?.producao.media_diaria.toFixed(1) ?? '—'}
-                  </Text>
-                  <Text style={s.valueUnit}>L/dia</Text>
+                <View style={{ gap: 10 }}>
+                  <SkeletonBox width={120} height={36} />
+                  <SkeletonBox width="100%" height={36} />
                 </View>
+              ) : (
+                <>
+                  <View style={s.valueRow}>
+                    <Text style={s.valueLarge}>
+                      {stats?.producao.media_diaria.toFixed(1) ?? '—'}
+                    </Text>
+                    <Text style={s.valueUnit}>L/dia</Text>
+                  </View>
+                  {spark7days.some(v => v > 0) && (
+                    <Sparkline data={spark7days} height={36} />
+                  )}
+                </>
               )}
             </View>
             <View style={s.iconBox}>
@@ -534,11 +556,11 @@ const s = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, padding: 14, overflow: 'hidden',
   },
   alertaCardAlta: { backgroundColor: colors.errorContainer, borderColor: colors.error },
-  alertaCardMedia: { backgroundColor: '#FFF8E7', borderColor: '#F59E0B' },
+  alertaCardMedia: { backgroundColor: colors.warningContainer, borderColor: colors.warning },
 
   alertaIndicator: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
   indicatorAlta: { backgroundColor: colors.error },
-  indicatorMedia: { backgroundColor: '#F59E0B' },
+  indicatorMedia: { backgroundColor: colors.warning },
 
   alertaInfo: { flex: 1, gap: 4 },
   alertaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -548,7 +570,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999,
   },
   severidadeAlta: { backgroundColor: colors.error },
-  severidadeMedia: { backgroundColor: '#F59E0B' },
+  severidadeMedia: { backgroundColor: colors.warning },
   severidadeTxt: { fontSize: 10, fontWeight: '700', fontFamily: fonts.bold, color: '#fff' },
 
   alertaMensagem: { fontSize: 13, color: colors.text },

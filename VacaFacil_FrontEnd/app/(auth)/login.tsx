@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, Alert,
+  View, Text, TouchableOpacity, Alert,
   StyleSheet, ScrollView, Image, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { login } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
+import AppInput from '../../components/AppInput';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 
@@ -47,30 +48,22 @@ export default function Login() {
 
       {/* Card do formulário */}
       <View style={s.card}>
-        <View style={s.field}>
-          <Text style={s.label}>EMAIL</Text>
-          <TextInput
-            style={s.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="seu@email.com"
-            placeholderTextColor={colors.textTertiary}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-        </View>
+        <AppInput
+          label="EMAIL"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="seu@email.com"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
 
-        <View style={s.field}>
-          <Text style={s.label}>SENHA</Text>
-          <TextInput
-            style={s.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            placeholderTextColor={colors.textTertiary}
-            secureTextEntry
-          />
-        </View>
+        <AppInput
+          label="SENHA"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="••••••••"
+          secureTextEntry
+        />
 
         <TouchableOpacity style={s.btnPrimary} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
           {loading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={s.btnPrimaryText}>Entrar</Text>}
@@ -127,27 +120,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     padding: 24,
-    gap: 24,
-  },
-  field: { gap: 4 },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: fonts.bold,
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
-    paddingHorizontal: 4,
-  },
-  input: {
-    height: 56,
-    backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.border,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: colors.text,
+    gap: 20,
   },
 
   btnPrimary: {

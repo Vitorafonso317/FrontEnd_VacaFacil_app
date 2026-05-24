@@ -1,23 +1,28 @@
 import { useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  StyleSheet, RefreshControl,
+  StyleSheet, RefreshControl, Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useReceitas, useDespesas, useRefreshOnFocus, QK } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { exportPdf, buildFinancialReport } from '../../utils/pdf';
+import { deleteReceita, deleteDespesa } from '../../services/financialService';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
 import TransactionModal from '../../components/TransactionModal';
+import EmptyState from '../../components/EmptyState';
+import { SkeletonTransactionCard } from '../../components/Skeleton';
+import type { FinancialRecord } from '../../types';
 
 type Tab = 'receitas' | 'despesas';
 
 export default function Financeiro() {
   const [tab, setTab] = useState<Tab>('receitas');
   const [modalVisible, setModalVisible] = useState(false);
+  const [editRecord, setEditRecord] = useState<FinancialRecord | null>(null);
   const [exporting, setExporting] = useState(false);
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -43,6 +48,40 @@ export default function Financeiro() {
     const html = buildFinancialReport(receitas, despesas, user?.nome ?? 'Produtor');
     await exportPdf(html, 'financeiro.pdf');
     setExporting(false);
+  }
+
+  function handleOptions(item: FinancialRecord) {
+    Alert.alert(item.descricao, undefined, [
+      {
+        text: 'Editar',
+        onPress: () => { setEditRecord(item); setModalVisible(true); },
+      },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: () => confirmDelete(item),
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }
+
+  function confirmDelete(item: FinancialRecord) {
+    Alert.alert('Excluir transação', `Excluir "${item.descricao}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive',
+        onPress: async () => {
+          try {
+            if (tab === 'receitas') await deleteReceita(item.id);
+            else await deleteDespesa(item.id);
+            queryClient.invalidateQueries({ queryKey: QK.receitas });
+            queryClient.invalidateQueries({ queryKey: QK.despesas });
+          } catch (e: any) {
+            Alert.alert('Erro', e.message);
+          }
+        },
+      },
+    ]);
   }
 
   return (
@@ -114,7 +153,9 @@ export default function Financeiro() {
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+        <View style={{ paddingHorizontal: 20, gap: 8, marginTop: 8 }}>
+          {Array.from({ length: 7 }).map((_, i) => <SkeletonTransactionCard key={i} />)}
+        </View>
       ) : (
         <FlatList
           data={records}
@@ -147,28 +188,39 @@ export default function Financeiro() {
               <Text style={[s.transValue, { color: isReceita ? colors.primary : colors.error }]}>
                 {isReceita ? '+' : '-'} {formatCurrency(item.valor)}
               </Text>
+              <TouchableOpacity
+                style={s.moreBtn}
+                onPress={() => handleOptions(item)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialIcons name="more-vert" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
           )}
           ListEmptyComponent={
-            <View style={s.empty}>
-              <MaterialIcons name="account-balance-wallet" size={48} color={colors.borderLight} />
-              <Text style={s.emptyText}>Nenhum registro.</Text>
-            </View>
+            <EmptyState
+              icon={isReceita ? 'trending-up' : 'trending-down'}
+              title={isReceita ? 'Nenhuma receita' : 'Nenhuma despesa'}
+              subtitle={isReceita ? 'Registre suas entradas para acompanhar o faturamento da fazenda.' : 'Registre suas saidas para controlar os custos da fazenda.'}
+            />
           }
           ListFooterComponent={<View style={{ height: 100 }} />}
         />
       )}
 
-      <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={() => { setEditRecord(null); setModalVisible(true); }}>
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.fabText}>Nova Transação</Text>
       </TouchableOpacity>
 
       <TransactionModal
         visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        editRecord={editRecord ?? undefined}
+        editTipo={editRecord ? (tab === 'receitas' ? 'receita' : 'despesa') : undefined}
+        onClose={() => { setModalVisible(false); setEditRecord(null); }}
         onSaved={() => {
           setModalVisible(false);
+          setEditRecord(null);
           queryClient.invalidateQueries({ queryKey: QK.receitas });
           queryClient.invalidateQueries({ queryKey: QK.despesas });
         }}
@@ -220,16 +272,14 @@ const s = StyleSheet.create({
   transTitle: { fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.text },
   transSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   transValue: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold },
-
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 16, color: colors.textSecondary },
+  moreBtn: { padding: 4 },
 
   fab: {
-    position: 'absolute', bottom: 20, right: 20,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.primary, paddingHorizontal: 20, height: 56,
-    borderRadius: 999, shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6,
+    position: 'absolute', bottom: 20, left: 20, right: 20,
+    height: 56, backgroundColor: colors.primary, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  fabText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold },
+  fabText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold },
 });

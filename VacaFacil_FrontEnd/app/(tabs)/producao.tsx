@@ -12,6 +12,8 @@ import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import ProductionModal from '../../components/ProductionModal';
+import EmptyState from '../../components/EmptyState';
+import { SkeletonProductionCard } from '../../components/Skeleton';
 
 export default function Producao() {
   const [search, setSearch] = useState('');
@@ -54,7 +56,21 @@ export default function Producao() {
   const vacasUnicas = useMemo(() => new Set(records.map(r => r.vaca_id)).size, [records]);
   const mediaPorVaca = vacasUnicas > 0 ? (totalMensal / vacasUnicas).toFixed(1) : '0';
 
-  if (isLoading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
+  if (isLoading) return (
+    <View style={s.screen}>
+      <View style={s.header}>
+        <View style={s.headerTop}>
+          <View>
+            <Text style={s.labelCap}>PRODUÇÃO DIÁRIA</Text>
+            <Text style={s.title}>Histórico</Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 20, gap: 8 }}>
+        {Array.from({ length: 7 }).map((_, i) => <SkeletonProductionCard key={i} />)}
+      </View>
+    </View>
+  );
 
   return (
     <View style={s.screen}>
@@ -134,10 +150,12 @@ export default function Producao() {
           );
         }}
         ListEmptyComponent={
-          <View style={s.empty}>
-            <MaterialIcons name="show-chart" size={48} color={colors.borderLight} />
-            <Text style={s.emptyText}>Nenhum registro de produção.</Text>
-          </View>
+          <EmptyState
+            icon="water-drop"
+            title={search ? 'Nenhum resultado' : 'Sem registros ainda'}
+            subtitle={search ? 'Nenhum registro corresponde ao filtro.' : 'Registre a produção de leite diária para acompanhar a evolução do rebanho.'}
+            onAction={search ? undefined : () => setModalVisible(true)}
+          />
         }
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
@@ -206,15 +224,12 @@ const s = StyleSheet.create({
   cardSub: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
   cardValue: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary },
 
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 16, color: colors.textSecondary },
-
   fab: {
-    position: 'absolute', bottom: 20, right: 20,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.primary, paddingHorizontal: 20, height: 56,
-    borderRadius: 999, shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6,
+    position: 'absolute', bottom: 20, left: 20, right: 20,
+    height: 56, backgroundColor: colors.primary, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  fabText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold },
+  fabText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold },
 });

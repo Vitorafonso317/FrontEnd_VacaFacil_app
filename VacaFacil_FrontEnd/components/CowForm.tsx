@@ -1,9 +1,10 @@
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TouchableOpacity,
   ScrollView, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AppInput from './AppInput';
 import { colors } from '../constants/colors';
 import type { CowInput } from '../types';
 
@@ -42,37 +43,39 @@ export default function CowForm({ title, subtitle, submitLabel, form, loading, o
       <Text style={s.subtitle}>{subtitle}</Text>
 
       <View style={s.form}>
-        <View style={s.field}>
-          <Text style={s.label}>NOME *</Text>
-          <TextInput
-            style={s.input} value={form.nome} onChangeText={v => onChange('nome', v)}
-            placeholder="Ex: Mimosa" placeholderTextColor={colors.textTertiary}
-            autoCapitalize="words" maxLength={255}
-          />
-        </View>
+        <AppInput
+          label="NOME *"
+          value={form.nome}
+          onChangeText={v => onChange('nome', v)}
+          placeholder="Ex: Mimosa"
+          autoCapitalize="words"
+          maxLength={255}
+        />
 
-        <View style={s.field}>
-          <Text style={s.label}>RAÇA</Text>
-          <TextInput
-            style={s.input} value={form.raca} onChangeText={v => onChange('raca', v)}
-            placeholder="Ex: Holandesa" placeholderTextColor={colors.textTertiary} maxLength={255}
-          />
-        </View>
+        <AppInput
+          label="RAÇA"
+          value={form.raca}
+          onChangeText={v => onChange('raca', v)}
+          placeholder="Ex: Holandesa"
+          maxLength={255}
+        />
 
         <View style={s.row}>
-          <View style={[s.field, s.flex1]}>
-            <Text style={s.label}>IDADE (anos)</Text>
-            <TextInput
-              style={s.input} value={form.idade} onChangeText={v => onChange('idade', v)}
-              placeholder="Ex: 3" placeholderTextColor={colors.textTertiary}
+          <View style={s.flex1}>
+            <AppInput
+              label="IDADE (anos)"
+              value={form.idade}
+              onChangeText={v => onChange('idade', v)}
+              placeholder="Ex: 3"
               keyboardType="numeric"
             />
           </View>
-          <View style={[s.field, s.flex1]}>
-            <Text style={s.label}>PESO (kg)</Text>
-            <TextInput
-              style={s.input} value={form.peso} onChangeText={v => onChange('peso', v)}
-              placeholder="Ex: 520" placeholderTextColor={colors.textTertiary}
+          <View style={s.flex1}>
+            <AppInput
+              label="PESO (kg)"
+              value={form.peso}
+              onChangeText={v => onChange('peso', v)}
+              placeholder="Ex: 520"
               keyboardType="numeric"
             />
           </View>
@@ -131,15 +134,9 @@ const s = StyleSheet.create({
   backBtn: { padding: 4, marginLeft: -4 },
   title: { fontSize: 32, fontWeight: '700', color: colors.primary, letterSpacing: -0.5, marginBottom: 8 },
   subtitle: { fontSize: 16, color: colors.textSecondary, marginBottom: 32 },
-  form: { gap: 24 },
-  field: { gap: 4 },
-  label: { fontSize: 14, fontWeight: '700', color: colors.text, letterSpacing: 0.5, paddingHorizontal: 4 },
-  input: {
-    height: 56, backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
-    borderTopLeftRadius: 8, borderTopRightRadius: 8,
-    paddingHorizontal: 16, fontSize: 16, color: colors.text,
-  },
+  form: { gap: 20 },
+  field: { gap: 6 },
+  label: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5, paddingHorizontal: 2 },
   row: { flexDirection: 'row', gap: 12 },
   flex1: { flex: 1 },
   statusRow: { flexDirection: 'row', gap: 8, marginTop: 4 },

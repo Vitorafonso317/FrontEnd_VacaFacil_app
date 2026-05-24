@@ -441,13 +441,13 @@ const s = StyleSheet.create({
   clearFilters: { fontSize: 14, color: colors.primary, fontWeight: '600', fontFamily: fonts.semiBold },
 
   fab: {
-    position: 'absolute', bottom: 20, right: 20,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.primary, paddingHorizontal: 20, height: 52,
-    borderRadius: 999, shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6,
+    position: 'absolute', bottom: 20, left: 20, right: 20,
+    height: 56, backgroundColor: colors.primary, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  fabText: { color: colors.onPrimary, fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold },
+  fabText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold },
 });
 
 const CARD_IMAGE_H = 140;

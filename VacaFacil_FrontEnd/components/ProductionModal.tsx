@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
+  Modal, View, Text, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -8,6 +8,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { getCows } from '../services/cattleService';
 import { createProduction } from '../services/productionService';
 import { enqueueProduction } from '../services/offlineQueue';
+import AppInput from './AppInput';
+import { useToast } from '../context/ToastContext';
 import type { Cow } from '../types';
 import { colors } from '../constants/colors';
 import { todayISO } from '../utils';
@@ -21,6 +23,7 @@ type Props = {
 };
 
 export default function ProductionModal({ visible, onClose, onSaved, preSelectedCowId, preSelectedCowName }: Props) {
+  const { showToast } = useToast();
   const [cows, setCows] = useState<Cow[]>([]);
   const [loadingCows, setLoadingCows] = useState(false);
   const [selectedCowId, setSelectedCowId] = useState<number | null>(preSelectedCowId ?? null);
@@ -88,7 +91,7 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
           litros: litrosNum,
           observacoes: observacoes.trim() || undefined,
         });
-        Alert.alert('Salvo offline', 'Sem conexão. O registro será enviado automaticamente quando a internet voltar.');
+        showToast('Salvo offline — será sincronizado quando a internet voltar.', 'info');
         onSaved();
         onClose();
         return;
@@ -99,6 +102,7 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
         litros: litrosNum,
         observacoes: observacoes.trim() || undefined,
       });
+      showToast('Produção registrada com sucesso!');
       onSaved();
       onClose();
     } catch (e: any) {
@@ -167,35 +171,26 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
                 </>
               )}
 
-              {/* Data */}
-              <Text style={s.label}>DATA</Text>
-              <TextInput
-                style={s.input}
+              <AppInput
+                label="DATA"
                 value={data}
                 onChangeText={setData}
                 placeholder="AAAA-MM-DD"
-                placeholderTextColor={colors.textTertiary}
               />
 
-              {/* Litros */}
-              <Text style={s.label}>LITROS PRODUZIDOS</Text>
-              <TextInput
-                style={s.input}
+              <AppInput
+                label="LITROS PRODUZIDOS"
                 value={litros}
                 onChangeText={setLitros}
                 placeholder="Ex: 28"
-                placeholderTextColor={colors.textTertiary}
                 keyboardType="decimal-pad"
               />
 
-              {/* Observações */}
-              <Text style={s.label}>OBSERVAÇÕES (opcional)</Text>
-              <TextInput
-                style={s.input}
+              <AppInput
+                label="OBSERVAÇÕES (opcional)"
                 value={observacoes}
                 onChangeText={setObservacoes}
                 placeholder="Ex: Produção normal"
-                placeholderTextColor={colors.textTertiary}
               />
 
               <TouchableOpacity
@@ -235,10 +230,6 @@ const s = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 },
   subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 20 },
 
-  label: {
-    fontSize: 12, fontWeight: '700', color: colors.textSecondary,
-    letterSpacing: 0.5, marginBottom: 6,
-  },
 
   selectRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -264,12 +255,6 @@ const s = StyleSheet.create({
   pickerItemText: { fontSize: 16, color: colors.text },
   pickerItemTextSelected: { fontWeight: '700', color: colors.primaryContainer },
 
-  input: {
-    height: 52, backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
-    borderTopLeftRadius: 8, borderTopRightRadius: 8,
-    paddingHorizontal: 16, fontSize: 16, color: colors.text, marginBottom: 16,
-  },
 
   saveBtn: {
     height: 56, backgroundColor: colors.primary, borderRadius: 12,

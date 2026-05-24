@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Modal, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { updateMe } from '../services/userService';
+import AppInput from '../components/AppInput';
 import { colors } from '../constants/colors';
 
 type NotificationKey = 'producao' | 'reproducao' | 'financeiro';
@@ -121,13 +122,11 @@ export default function Configuracoes() {
               </TouchableOpacity>
             </View>
 
-            <Text style={s.inputLabel}>Nova senha</Text>
-            <TextInput
-              style={s.input}
+            <AppInput
+              label="NOVA SENHA"
               value={password}
               onChangeText={setPassword}
-              placeholder="Minimo 6 caracteres"
-              placeholderTextColor={colors.textTertiary}
+              placeholder="Mínimo 6 caracteres"
               secureTextEntry
             />
 
@@ -230,16 +229,6 @@ const s = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  inputLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginTop: 4 },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    color: colors.text,
-    backgroundColor: colors.surfaceContainerLowest,
-  },
   saveBtn: {
     marginTop: 8,
     height: 52,

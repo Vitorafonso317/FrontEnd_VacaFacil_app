@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  View, Text, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, SafeAreaView, StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { register, login } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
+import AppInput from '../../components/AppInput';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 
@@ -77,39 +78,49 @@ export default function Register() {
 
         {/* Campos */}
         <View style={s.form}>
-          <View style={s.field}>
-            <Text style={s.label}>NOME</Text>
-            <TextInput style={s.input} placeholder="Ex: João Silva" placeholderTextColor={colors.textTertiary}
-              value={name} onChangeText={setName} autoCapitalize="words" maxLength={255} />
-          </View>
+          <AppInput
+            label="NOME"
+            placeholder="Ex: João Silva"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            maxLength={255}
+          />
 
-          <View style={s.field}>
-            <Text style={s.label}>EMAIL</Text>
-            <TextInput style={s.input} placeholder="email@exemplo.com" placeholderTextColor={colors.textTertiary}
-              value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-          </View>
+          <AppInput
+            label="EMAIL"
+            placeholder="email@exemplo.com"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
 
-          <View style={s.field}>
-            <Text style={s.label}>SENHA</Text>
-            <View style={s.inputRow}>
-              <TextInput style={s.inputFlex} placeholder="••••••••" placeholderTextColor={colors.textTertiary}
-                value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
-              <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={s.eyeBtn}>
+          <AppInput
+            label="SENHA"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            rightIcon={
+              <TouchableOpacity onPress={() => setShowPassword(v => !v)}>
                 <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={22} color={colors.border} />
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
 
-          <View style={s.field}>
-            <Text style={s.label}>CONFIRMAR SENHA</Text>
-            <View style={s.inputRow}>
-              <TextInput style={s.inputFlex} placeholder="••••••••" placeholderTextColor={colors.textTertiary}
-                value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry={!showConfirm} />
-              <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={s.eyeBtn}>
+          <AppInput
+            label="CONFIRMAR SENHA"
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry={!showConfirm}
+            rightIcon={
+              <TouchableOpacity onPress={() => setShowConfirm(v => !v)}>
                 <MaterialIcons name={showConfirm ? 'visibility-off' : 'visibility'} size={22} color={colors.border} />
               </TouchableOpacity>
-            </View>
-          </View>
+            }
+          />
 
           {/* Termos */}
           <TouchableOpacity style={s.checkRow} onPress={() => setAcceptedTerms(v => !v)} activeOpacity={0.7}>
@@ -145,26 +156,7 @@ const s = StyleSheet.create({
   backBtn: { padding: 4, marginLeft: -4 },
   title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.primary, marginBottom: 8, letterSpacing: -0.5 },
   subtitle: { fontSize: 16, color: colors.textSecondary, marginBottom: 32 },
-  form: { gap: 24 },
-  field: { gap: 4 },
-  label: { fontSize: 14, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, letterSpacing: 0.5, paddingHorizontal: 4 },
-  input: {
-    height: 56, backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
-    borderTopLeftRadius: 8, borderTopRightRadius: 8,
-    paddingHorizontal: 16, fontSize: 16, color: colors.text,
-  },
-  inputRow: { flexDirection: 'row', alignItems: 'center' },
-  inputFlex: {
-    flex: 1, height: 56, backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
-    borderTopLeftRadius: 8, paddingHorizontal: 16, fontSize: 16, color: colors.text,
-  },
-  eyeBtn: {
-    height: 56, width: 48, backgroundColor: colors.surfaceContainerLow,
-    borderBottomWidth: 2, borderBottomColor: colors.borderLight,
-    borderTopRightRadius: 8, alignItems: 'center', justifyContent: 'center',
-  },
+  form: { gap: 20 },
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   checkbox: {
     width: 20, height: 20, borderRadius: 4, borderWidth: 2,

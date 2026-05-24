@@ -1,42 +1,41 @@
-// Paleta de cores baseada no design system Rural High-Contrast Management (Stitch)
 export const colors = {
-  // Primária — Verde Floresta
-  primary: '#0d631b',
-  primaryContainer: '#2e7d32',
+  // Primária — Verde Oliva Quente (agro, terroso, campo)
+  primary: '#4A7028',
+  primaryContainer: '#5C8A35',
   onPrimary: '#ffffff',
-  onPrimaryContainer: '#cbffc2',
-  primaryFixedDim: '#88d982',
+  onPrimaryContainer: '#D4EDBA',
+  primaryFixedDim: '#8EBD62',
 
-  // Secundária — Marrom Terroso
-  secondary: '#7a5649',
-  secondaryContainer: '#fdcdbc',
+  // Secundária — Âmbar / Caramelo (terra, palha)
+  secondary: '#8B6914',
+  secondaryContainer: '#F5D78E',
   onSecondary: '#ffffff',
-  onSecondaryContainer: '#795548',
+  onSecondaryContainer: '#7A5C10',
 
-  // Terciária — Rosa/Vinho
-  tertiary: '#923357',
-  tertiaryContainer: '#b14b6f',
+  // Terciária — Terracota (celeiro, argila)
+  tertiary: '#9C4A2B',
+  tertiaryContainer: '#C06040',
   onTertiary: '#ffffff',
 
-  // Superfícies
-  background: '#f7fbf0',
-  surface: '#f7fbf0',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f1f5eb',
-  surfaceContainer: '#ebefe5',
-  surfaceContainerHigh: '#e5eadf',
-  surfaceContainerHighest: '#e0e4da',
-  surfaceVariant: '#e0e4da',
-  surfaceDim: '#d7dbd2',
+  // Superfícies — tom levemente creme/palha (não azulado)
+  background: '#F9F7F0',
+  surface: '#F9F7F0',
+  surfaceContainerLowest: '#FFFFFF',
+  surfaceContainerLow: '#F3F1E8',
+  surfaceContainer: '#EDEAE0',
+  surfaceContainerHigh: '#E7E4DA',
+  surfaceContainerHighest: '#E1DED4',
+  surfaceVariant: '#E1DED4',
+  surfaceDim: '#D8D5CB',
 
   // Texto
-  text: '#181d17',
-  textSecondary: '#40493d',
-  textTertiary: '#707a6c',
+  text: '#1A1C17',
+  textSecondary: '#42473C',
+  textTertiary: '#72786A',
 
   // Bordas
-  border: '#707a6c',
-  borderLight: '#bfcaba',
+  border: '#72786A',
+  borderLight: '#C4C8B8',
 
   // Semânticas
   error: '#ba1a1a',
@@ -44,8 +43,13 @@ export const colors = {
   errorContainer: '#ffdad6',
   onErrorContainer: '#93000a',
 
+  warning: '#F59E0B',
+  warningContainer: '#FFF8E7',
+  onWarning: '#ffffff',
+  onWarningContainer: '#7A5000',
+
   // Inversas
-  inverseSurface: '#2d322b',
-  inverseOnSurface: '#eef2e8',
-  inversePrimary: '#88d982',
+  inverseSurface: '#2E3028',
+  inverseOnSurface: '#F0F2E8',
+  inversePrimary: '#8EBD62',
 };

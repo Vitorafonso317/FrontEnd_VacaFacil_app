@@ -12,6 +12,7 @@ import AppInput from './AppInput';
 import { useToast } from '../context/ToastContext';
 import type { Cow } from '../types';
 import { colors } from '../constants/colors';
+import { fonts } from '../constants/fonts';
 import { todayISO } from '../utils';
 
 type Props = {
@@ -267,4 +268,6 @@ const s = StyleSheet.create({
   saveBtnText: { color: colors.onPrimary, fontSize: 18, fontWeight: '600' },
   cancelBtn: { alignItems: 'center', paddingVertical: 14 },
   cancelText: { fontSize: 16, color: colors.textSecondary },
+
+  label: { fontSize: 12, fontWeight: '700', fontFamily: fonts.bold, color: colors.textSecondary, letterSpacing: 0.5, marginBottom: 6 },
 });

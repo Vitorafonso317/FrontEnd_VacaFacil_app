@@ -47,7 +47,7 @@ export function Card({
     return (
 
       // View animada para aplicar escala
-      <Animated.View style={[pressAnimation.transform]}>
+      <Animated.View style={{ transform: pressAnimation.transform as any }}>
 
         <TouchableOpacity
 

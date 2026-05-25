@@ -16,3 +16,17 @@ export function register(nome: string, email: string, password: string) {
     body: JSON.stringify({ nome, email, password }),
   });
 }
+
+export function forgotPassword(email: string) {
+  return request<ApiResponse<null>>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function resetPassword(email: string, code: string, password: string) {
+  return request<ApiResponse<null>>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, password }),
+  });
+}

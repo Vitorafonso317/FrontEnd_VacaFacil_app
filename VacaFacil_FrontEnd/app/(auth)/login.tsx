@@ -70,7 +70,7 @@ export default function Login() {
         </TouchableOpacity>
 
         <View style={s.links}>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
             <Text style={s.linkPrimary}>Esqueci minha senha</Text>
           </TouchableOpacity>
           <View style={s.divider} />

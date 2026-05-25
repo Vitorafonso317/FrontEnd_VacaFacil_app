@@ -44,7 +44,10 @@ export default function TransactionModal({ visible, onClose, onSaved, editRecord
   }, [visible, editRecord]);
 
   function isValidDate(d: string) {
-    return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+    const [y, m, day] = d.split('-').map(Number);
+    const dt = new Date(y, m - 1, day);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === day;
   }
 
   async function handleSave() {

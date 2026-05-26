@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView,
+  Platform, useWindowDimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { createMedicamento } from '../services/medicamentosService';
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export default function SaudeModal({ visible, onClose, onSaved, cowId, cowName }: Props) {
+  const { height: SCREEN_H } = useWindowDimensions();
   const [nomeMedicamento, setNomeMedicamento] = useState('');
   const [dataAplicacao, setDataAplicacao] = useState(todayISO());
   const [diasCarencia, setDiasCarencia] = useState('');
@@ -78,100 +80,111 @@ export default function SaudeModal({ visible, onClose, onSaved, cowId, cowName }
   })();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={s.overlay}>
-        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView
+        style={s.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
 
-            <View style={s.titleRow}>
-              <MaterialIcons name="medication" size={22} color={colors.error} />
-              <Text style={s.title}>Registrar Tratamento</Text>
-            </View>
-            <Text style={s.subtitle}>{cowName}</Text>
+        <View style={[s.sheet, { maxHeight: SCREEN_H * 0.85 }]}>
+          <View style={s.handle} />
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-              <Text style={s.label}>MEDICAMENTO *</Text>
-              <TextInput
-                style={s.input}
-                value={nomeMedicamento}
-                onChangeText={setNomeMedicamento}
-                placeholder="Ex: Terramicina, Penstrep..."
-                placeholderTextColor={colors.textTertiary}
-              />
-
-              <Text style={s.label}>DATA DE APLICAÇÃO *</Text>
-              <TextInput
-                style={s.input}
-                value={dataAplicacao}
-                onChangeText={setDataAplicacao}
-                placeholder="AAAA-MM-DD"
-                placeholderTextColor={colors.textTertiary}
-              />
-
-              <Text style={s.label}>DIAS DE CARÊNCIA *</Text>
-              <TextInput
-                style={s.input}
-                value={diasCarencia}
-                onChangeText={setDiasCarencia}
-                placeholder="Ex: 7 (conforme a bula)"
-                placeholderTextColor={colors.textTertiary}
-                keyboardType="numeric"
-              />
-
-              {dataFim && (
-                <View style={s.previewCard}>
-                  <MaterialIcons name="event-busy" size={18} color={colors.error} />
-                  <Text style={s.previewText}>
-                    Leite descartável até <Text style={s.previewDate}>{dataFim}</Text>
-                  </Text>
-                </View>
-              )}
-
-              <Text style={s.label}>OBSERVAÇÕES (opcional)</Text>
-              <TextInput
-                style={[s.input, s.inputMulti]}
-                value={observacoes}
-                onChangeText={setObservacoes}
-                placeholder="Ex: Dose única, aplicar no úbere"
-                placeholderTextColor={colors.textTertiary}
-                multiline
-                numberOfLines={2}
-                textAlignVertical="top"
-              />
-
-              <TouchableOpacity
-                style={[s.saveBtn, saving && s.saveBtnDisabled]}
-                onPress={handleSave}
-                disabled={saving}
-                activeOpacity={0.85}
-              >
-                {saving
-                  ? <ActivityIndicator color={colors.onPrimary} />
-                  : <Text style={s.saveBtnTxt}>REGISTRAR TRATAMENTO</Text>
-                }
-              </TouchableOpacity>
-
-              <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-                <Text style={s.cancelTxt}>Cancelar</Text>
-              </TouchableOpacity>
-            </ScrollView>
+          <View style={s.titleRow}>
+            <MaterialIcons name="medication" size={22} color={colors.error} />
+            <Text style={s.title}>Registrar Tratamento</Text>
           </View>
-        </KeyboardAvoidingView>
-      </View>
+          <Text style={s.subtitle}>{cowName}</Text>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            contentContainerStyle={s.scrollContent}
+          >
+            <Text style={s.label}>MEDICAMENTO *</Text>
+            <TextInput
+              style={s.input}
+              value={nomeMedicamento}
+              onChangeText={setNomeMedicamento}
+              placeholder="Ex: Terramicina, Penstrep..."
+              placeholderTextColor={colors.textTertiary}
+            />
+
+            <Text style={s.label}>DATA DE APLICAÇÃO *</Text>
+            <TextInput
+              style={s.input}
+              value={dataAplicacao}
+              onChangeText={setDataAplicacao}
+              placeholder="AAAA-MM-DD"
+              placeholderTextColor={colors.textTertiary}
+            />
+
+            <Text style={s.label}>DIAS DE CARÊNCIA *</Text>
+            <TextInput
+              style={s.input}
+              value={diasCarencia}
+              onChangeText={setDiasCarencia}
+              placeholder="Ex: 7 (conforme a bula)"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="numeric"
+            />
+
+            {dataFim && (
+              <View style={s.previewCard}>
+                <MaterialIcons name="event-busy" size={18} color={colors.error} />
+                <Text style={s.previewText}>
+                  Leite descartável até <Text style={s.previewDate}>{dataFim}</Text>
+                </Text>
+              </View>
+            )}
+
+            <Text style={s.label}>OBSERVAÇÕES (opcional)</Text>
+            <TextInput
+              style={[s.input, s.inputMulti]}
+              value={observacoes}
+              onChangeText={setObservacoes}
+              placeholder="Ex: Dose única, aplicar no úbere"
+              placeholderTextColor={colors.textTertiary}
+              multiline
+              numberOfLines={2}
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity
+              style={[s.saveBtn, saving && s.saveBtnDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              {saving
+                ? <ActivityIndicator color={colors.onPrimary} />
+                : <Text style={s.saveBtnTxt}>REGISTRAR TRATAMENTO</Text>
+              }
+            </TouchableOpacity>
+
+            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+              <Text style={s.cancelTxt}>Cancelar</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  backdrop: { flex: 1 },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  scrollContent: { paddingBottom: 32 },
   sheet: {
     backgroundColor: colors.surfaceContainerLowest,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 24, maxHeight: '90%',
+    paddingTop: 12, paddingHorizontal: 24,
+    elevation: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   handle: {
     width: 40, height: 4, backgroundColor: colors.borderLight,

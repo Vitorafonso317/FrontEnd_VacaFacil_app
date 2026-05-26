@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView,
+  Platform, useWindowDimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export default function ProductionModal({ visible, onClose, onSaved, preSelectedCowId, preSelectedCowName }: Props) {
+  const { height: SCREEN_H } = useWindowDimensions();
   const { showToast } = useToast();
   const [cows, setCows] = useState<Cow[]>([]);
   const [loadingCows, setLoadingCows] = useState(false);
@@ -122,16 +124,23 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
   const isPicked = !!preSelectedCowId;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={s.overlay}>
-        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
-            <Text style={s.title}>Registrar Produção</Text>
-            <Text style={s.subtitle}>Informe a produção de hoje</Text>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView
+        style={s.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
+        <View style={[s.sheet, { maxHeight: SCREEN_H * 0.9 }]}>
+          <View style={s.handle} />
+          <Text style={s.title}>Registrar Produção</Text>
+          <Text style={s.subtitle}>Informe a produção de hoje</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            contentContainerStyle={{ paddingBottom: 32 }}
+          >
               {/* Vaca */}
               <Text style={s.label}>VACA</Text>
               {loadingCows ? (
@@ -208,24 +217,27 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
                   : <Text style={s.saveBtnText}>SALVAR PRODUÇÃO</Text>
                 }
               </TouchableOpacity>
-              <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-                <Text style={s.cancelText}>Cancelar</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+          <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+            <Text style={s.cancelText}>Cancelar</Text>
+          </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  backdrop: { flex: 1 },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
     backgroundColor: colors.surfaceContainerLowest,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 24, maxHeight: '90%',
+    paddingTop: 12, paddingHorizontal: 24,
+    elevation: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   handle: {
     width: 40, height: 4, backgroundColor: colors.borderLight,

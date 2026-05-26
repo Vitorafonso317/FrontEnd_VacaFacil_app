@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView,
+  Platform, useWindowDimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { createReproducao, updateReproducao } from '../services/reproducaoService';
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export default function ReproducaoModal({ visible, onClose, onSaved, cowId, cowName, editing }: Props) {
+  const { height: SCREEN_H } = useWindowDimensions();
   const [tipoOpen, setTipoOpen] = useState(false);
   const [tipo, setTipo] = useState('');
   const [data, setData] = useState(todayISO());
@@ -87,108 +89,139 @@ export default function ReproducaoModal({ visible, onClose, onSaved, cowId, cowN
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={s.overlay}>
-        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
-            <Text style={s.title}>{editing ? 'Editar Evento' : 'Evento Reprodutivo'}</Text>
-            <Text style={s.subtitle}>{cowName}</Text>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      {/* KAV é o container raiz — flex:1 garante que maxHeight % funcione */}
+      <KeyboardAvoidingView
+        style={s.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Backdrop posicionado absolutamente — não afeta o layout flex */}
+        <TouchableOpacity
+          style={StyleSheet.absoluteFillObject}
+          activeOpacity={1}
+          onPress={onClose}
+        />
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={[s.sheet, { maxHeight: SCREEN_H * 0.85 }]}>
+          <View style={s.handle} />
+          <Text style={s.title}>{editing ? 'Editar Evento' : 'Evento Reprodutivo'}</Text>
+          <Text style={s.subtitle}>{cowName}</Text>
 
-              {/* Tipo de evento */}
-              <Text style={s.label}>TIPO DE EVENTO *</Text>
-              <TouchableOpacity
-                style={s.selectRow}
-                onPress={() => setTipoOpen(o => !o)}
-                activeOpacity={0.7}
-              >
-                <Text style={tipo ? s.selectValue : s.selectPlaceholder}>
-                  {tipo || 'Selecionar tipo...'}
-                </Text>
-                <MaterialIcons
-                  name={tipoOpen ? 'expand-less' : 'expand-more'}
-                  size={22}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              {tipoOpen && (
-                <View style={s.pickerList}>
-                  {TIPOS.map(t => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[s.pickerItem, tipo === t && s.pickerItemSelected]}
-                      onPress={() => { setTipo(t); setTipoOpen(false); }}
-                    >
-                      <Text style={[s.pickerItemTxt, tipo === t && s.pickerItemTxtSelected]}>
-                        {t}
-                      </Text>
-                      {tipo === t && <MaterialIcons name="check" size={18} color={colors.primary} />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {/* Data */}
-              <Text style={s.label}>DATA *</Text>
-              <TextInput
-                style={s.input}
-                value={data}
-                onChangeText={setData}
-                placeholder="AAAA-MM-DD"
-                placeholderTextColor={colors.textTertiary}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            contentContainerStyle={s.scrollContent}
+          >
+            {/* Tipo de evento */}
+            <Text style={s.label}>TIPO DE EVENTO *</Text>
+            <TouchableOpacity
+              style={s.selectRow}
+              onPress={() => setTipoOpen(o => !o)}
+              activeOpacity={0.7}
+            >
+              <Text style={tipo ? s.selectValue : s.selectPlaceholder}>
+                {tipo || 'Selecionar tipo...'}
+              </Text>
+              <MaterialIcons
+                name={tipoOpen ? 'expand-less' : 'expand-more'}
+                size={22}
+                color={colors.textSecondary}
               />
+            </TouchableOpacity>
 
-              {/* Observações */}
-              <Text style={s.label}>OBSERVAÇÕES (opcional)</Text>
-              <TextInput
-                style={[s.input, s.inputMulti]}
-                value={observacoes}
-                onChangeText={setObservacoes}
-                placeholder="Ex: Inseminação com touro Girolando"
-                placeholderTextColor={colors.textTertiary}
-                multiline
-                numberOfLines={2}
-                textAlignVertical="top"
-              />
+            {tipoOpen && (
+              <View style={s.pickerList}>
+                {TIPOS.map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[s.pickerItem, tipo === t && s.pickerItemSelected]}
+                    onPress={() => { setTipo(t); setTipoOpen(false); }}
+                  >
+                    <Text style={[s.pickerItemTxt, tipo === t && s.pickerItemTxtSelected]}>
+                      {t}
+                    </Text>
+                    {tipo === t && <MaterialIcons name="check" size={18} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-              <TouchableOpacity
-                style={[s.saveBtn, saving && s.saveBtnDisabled]}
-                onPress={handleSave}
-                disabled={saving}
-                activeOpacity={0.85}
-              >
-                {saving
-                  ? <ActivityIndicator color={colors.onPrimary} />
-                  : <Text style={s.saveBtnTxt}>{editing ? 'SALVAR ALTERAÇÕES' : 'SALVAR EVENTO'}</Text>
-                }
-              </TouchableOpacity>
+            {/* Data */}
+            <Text style={s.label}>DATA *</Text>
+            <TextInput
+              style={s.input}
+              value={data}
+              onChangeText={setData}
+              placeholder="AAAA-MM-DD"
+              placeholderTextColor={colors.textTertiary}
+            />
 
-              <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-                <Text style={s.cancelTxt}>Cancelar</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+            {/* Observações */}
+            <Text style={s.label}>OBSERVAÇÕES (opcional)</Text>
+            <TextInput
+              style={[s.input, s.inputMulti]}
+              value={observacoes}
+              onChangeText={setObservacoes}
+              placeholder="Ex: Inseminação com touro Girolando"
+              placeholderTextColor={colors.textTertiary}
+              multiline
+              numberOfLines={2}
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity
+              style={[s.saveBtn, saving && s.saveBtnDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              {saving
+                ? <ActivityIndicator color={colors.onPrimary} />
+                : <Text style={s.saveBtnTxt}>{editing ? 'SALVAR ALTERAÇÕES' : 'SALVAR EVENTO'}</Text>
+              }
+            </TouchableOpacity>
+
+            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+              <Text style={s.cancelTxt}>Cancelar</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  backdrop: { flex: 1 },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
   sheet: {
     backgroundColor: colors.surfaceContainerLowest,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 24, maxHeight: '85%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingHorizontal: 24,
+    elevation: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  scrollContent: {
+    paddingBottom: 32,
   },
   handle: {
     width: 40, height: 4, backgroundColor: colors.borderLight,
-    borderRadius: 2, alignSelf: 'center', marginBottom: 20,
+    borderRadius: 2, alignSelf: 'center', marginBottom: 16,
   },
   title: { fontSize: 20, fontWeight: '700', fontFamily: fonts.bold, color: colors.text, marginBottom: 2 },
   subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 20 },

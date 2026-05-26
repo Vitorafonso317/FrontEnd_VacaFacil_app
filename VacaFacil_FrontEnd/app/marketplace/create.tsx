@@ -4,12 +4,14 @@ import {
   ScrollView, Alert, ActivityIndicator, StyleSheet, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import request from '../../services/api';
 import { getCows } from '../../services/cattleService';
 import { uploadFotoAnuncio } from '../../services/uploadService';
+import { QK } from '../../hooks/queries';
 import AppInput from '../../components/AppInput';
 import type { ApiResponse, MarketplaceItem, MarketplaceInput, Cow } from '../../types';
 import { colors } from '../../constants/colors';
@@ -18,6 +20,7 @@ const MAX_IMAGES = 3;
 
 export default function CriarAnuncio() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [cows, setCows] = useState<Cow[]>([]);
   const [loadingCows, setLoadingCows] = useState(true);
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
@@ -126,6 +129,7 @@ export default function CriarAnuncio() {
         );
       }
 
+      queryClient.invalidateQueries({ queryKey: QK.marketplace });
       router.back();
     } catch (e: any) {
       Alert.alert('Erro ao publicar', e.message);

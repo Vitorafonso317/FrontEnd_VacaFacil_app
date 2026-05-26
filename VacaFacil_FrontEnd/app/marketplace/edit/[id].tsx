@@ -4,10 +4,12 @@ import {
   ScrollView, Alert, ActivityIndicator, StyleSheet, Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import request from '../../../services/api';
 import { uploadFotoAnuncio } from '../../../services/uploadService';
+import { QK } from '../../../hooks/queries';
 import AppInput from '../../../components/AppInput';
 import type { ApiResponse, MarketplaceItem, MarketplaceInput } from '../../../types';
 import { colors } from '../../../constants/colors';
@@ -17,6 +19,7 @@ const MAX_IMAGES = 3;
 export default function EditarAnuncio() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({ titulo: '', descricao: '', preco: '', contato: '' });
   const [existingFotos, setExistingFotos] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<string[]>([]);
@@ -92,6 +95,7 @@ export default function EditarAnuncio() {
         );
       }
 
+      queryClient.invalidateQueries({ queryKey: QK.marketplace });
       router.back();
     } catch (e: any) {
       Alert.alert('Erro ao salvar', e.message);

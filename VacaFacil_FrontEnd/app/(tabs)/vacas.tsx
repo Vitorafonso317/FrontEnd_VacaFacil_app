@@ -9,6 +9,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { deleteCow } from '../../services/cattleService';
 import { useVacas, useRefreshOnFocus, QK } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
+import { useA11y } from '../../context/AccessibilityContext';
 import { exportPdf, buildCowsReport } from '../../utils/pdf';
 import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
@@ -45,6 +46,7 @@ export default function Vacas() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  const { btnHeight } = useA11y();
   const { data: cows = [], isLoading, isFetching, refetch } = useVacas();
   useRefreshOnFocus(QK.vacas);
 
@@ -190,7 +192,7 @@ export default function Vacas() {
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
 
-      <TouchableOpacity style={s.addBtn} onPress={() => router.push('/vacas/create')} activeOpacity={0.85}>
+      <TouchableOpacity style={[s.addBtn, { height: btnHeight }]} onPress={() => router.push('/vacas/create')} activeOpacity={0.85}>
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.addBtnText}>Adicionar Vaca</Text>
       </TouchableOpacity>

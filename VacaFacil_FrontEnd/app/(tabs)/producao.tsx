@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProducao, useVacas, useRefreshOnFocus, QK } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
+import { useA11y } from '../../context/AccessibilityContext';
 import { exportPdf, buildProductionReport } from '../../utils/pdf';
 import type { Cow } from '../../types';
 import { colors } from '../../constants/colors';
@@ -16,6 +17,7 @@ import EmptyState from '../../components/EmptyState';
 import { SkeletonProductionCard } from '../../components/Skeleton';
 
 export default function Producao() {
+  const { btnHeight } = useA11y();
   const [search, setSearch] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -160,7 +162,7 @@ export default function Producao() {
         ListFooterComponent={<View style={{ height: 100 }} />}
       />
 
-      <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity style={[s.fab, { height: btnHeight }]} activeOpacity={0.85} onPress={() => setModalVisible(true)}>
         <MaterialIcons name="add" size={22} color={colors.onPrimary} />
         <Text style={s.fabText}>Registrar Produção</Text>
       </TouchableOpacity>

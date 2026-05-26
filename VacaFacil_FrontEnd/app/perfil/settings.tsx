@@ -10,6 +10,7 @@ import {
   scheduleDailyProductionReminder,
   scheduleWeeklyFinanceReminder,
 } from '../../services/notificationService';
+import { useA11y } from '../../context/AccessibilityContext';
 import { colors } from '../../constants/colors';
 
 const STORAGE_KEY = '@vacafacil:settings';
@@ -30,6 +31,7 @@ const DEFAULT_SETTINGS: Settings = {
 
 export default function Configuracoes() {
   const router = useRouter();
+  const { isLargeText, toggleLargeText, btnHeight } = useA11y();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
@@ -100,6 +102,18 @@ export default function Configuracoes() {
           description="Mostrar previsões e médias na tela inicial"
           value={settings.mostrarDashboardStats}
           onToggle={() => toggle('mostrarDashboardStats')}
+        />
+      </View>
+
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>ACESSIBILIDADE</Text>
+
+        <SettingRow
+          icon="text-fields"
+          label="Texto e botões grandes"
+          description={`Aumenta fontes e altura dos botões ${isLargeText ? `(altura atual: ${btnHeight}px)` : ''}`}
+          value={isLargeText}
+          onToggle={toggleLargeText}
         />
       </View>
     </ScrollView>

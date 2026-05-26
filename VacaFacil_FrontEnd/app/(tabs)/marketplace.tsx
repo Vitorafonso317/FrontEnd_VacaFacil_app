@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useMarketplace, useRefreshOnFocus, QK } from '../../hooks/queries';
+import { useA11y } from '../../context/AccessibilityContext';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { formatCurrency } from '../../utils';
@@ -87,6 +88,7 @@ function fmtRelative(dateStr?: string): string {
 }
 
 export default function Marketplace() {
+  const { btnHeight } = useA11y();
   const router = useRouter();
   const { data: items = [], isLoading, isFetching, refetch } = useMarketplace();
 
@@ -287,7 +289,7 @@ export default function Marketplace() {
       />
 
       <TouchableOpacity
-        style={s.fab}
+        style={[s.fab, { height: btnHeight }]}
         activeOpacity={0.85}
         onPress={() => router.push('/marketplace/create')}
       >

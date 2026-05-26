@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Alert,
   StyleSheet, ScrollView, Image, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -36,7 +37,8 @@ export default function Login() {
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {/* Logo */}
       <View style={s.logoSection}>
         <View style={s.logoBox}>
@@ -94,6 +96,7 @@ export default function Login() {
 
       <Text style={s.footer}>TECNOLOGIA NO CAMPO</Text>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

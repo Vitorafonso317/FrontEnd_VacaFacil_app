@@ -99,7 +99,7 @@ export default function ReproducaoModal({ visible, onClose, onSaved, cowId, cowN
       {/* KAV é o container raiz — flex:1 garante que maxHeight % funcione */}
       <KeyboardAvoidingView
         style={s.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
       >
         {/* Backdrop posicionado absolutamente — não afeta o layout flex */}
         <TouchableOpacity

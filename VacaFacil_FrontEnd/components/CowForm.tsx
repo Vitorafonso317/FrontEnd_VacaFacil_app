@@ -1,6 +1,7 @@
 import {
   View, Text, TouchableOpacity,
   ScrollView, ActivityIndicator, StyleSheet,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -32,7 +33,8 @@ export default function CowForm({ title, subtitle, submitLabel, form, loading, o
   const router = useRouter();
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <MaterialIcons name="arrow-back" size={28} color={colors.primary} />
@@ -110,6 +112,7 @@ export default function CowForm({ title, subtitle, submitLabel, form, loading, o
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

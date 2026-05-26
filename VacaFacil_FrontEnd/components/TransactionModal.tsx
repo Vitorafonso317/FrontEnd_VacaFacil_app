@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView,
+  Platform, useWindowDimensions,
 } from 'react-native';
 import { createReceita, createDespesa, updateReceita, updateDespesa } from '../services/financialService';
 import AppInput from './AppInput';
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export default function TransactionModal({ visible, onClose, onSaved, editRecord, editTipo }: Props) {
+  const { height: SCREEN_H } = useWindowDimensions();
   const isEditing = !!editRecord;
   const { showToast } = useToast();
 
@@ -68,17 +70,11 @@ export default function TransactionModal({ visible, onClose, onSaved, editRecord
     try {
       const payload = { descricao: descricao.trim(), valor: valorNum, data };
       if (isEditing && editRecord) {
-        if (tipo === 'receita') {
-          await updateReceita(editRecord.id, payload);
-        } else {
-          await updateDespesa(editRecord.id, payload);
-        }
+        if (tipo === 'receita') await updateReceita(editRecord.id, payload);
+        else await updateDespesa(editRecord.id, payload);
       } else {
-        if (tipo === 'receita') {
-          await createReceita(payload);
-        } else {
-          await createDespesa(payload);
-        }
+        if (tipo === 'receita') await createReceita(payload);
+        else await createDespesa(payload);
       }
       showToast(isEditing ? 'Transação atualizada!' : `${tipo === 'receita' ? 'Receita' : 'Despesa'} registrada!`);
       onSaved();
@@ -91,90 +87,104 @@ export default function TransactionModal({ visible, onClose, onSaved, editRecord
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={s.overlay}>
-        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
-            <Text style={s.title}>{isEditing ? 'Editar Transação' : 'Nova Transação'}</Text>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView
+        style={s.overlay}
+        behavior="padding"
+      >
+        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <View style={s.toggle}>
-                <TouchableOpacity
-                  style={[s.toggleBtn, tipo === 'receita' && s.toggleBtnActive, isEditing && s.toggleBtnLocked]}
-                  onPress={() => !isEditing && setTipo('receita')}
-                  activeOpacity={isEditing ? 1 : 0.7}
-                >
-                  <Text style={[s.toggleText, tipo === 'receita' && s.toggleTextActive]}>
-                    💰 Receita
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.toggleBtn, tipo === 'despesa' && s.toggleBtnActive, isEditing && s.toggleBtnLocked]}
-                  onPress={() => !isEditing && setTipo('despesa')}
-                  activeOpacity={isEditing ? 1 : 0.7}
-                >
-                  <Text style={[s.toggleText, tipo === 'despesa' && s.toggleTextActive]}>
-                    📤 Despesa
-                  </Text>
-                </TouchableOpacity>
-              </View>
+        <View style={[s.sheet, { maxHeight: SCREEN_H * 0.9 }]}>
+          <View style={s.handle} />
+          <Text style={s.title}>{isEditing ? 'Editar Transação' : 'Nova Transação'}</Text>
 
-              <View style={s.fields}>
-                <AppInput
-                  label="DESCRIÇÃO"
-                  value={descricao}
-                  onChangeText={setDescricao}
-                  placeholder="Ex: Venda de leite"
-                />
-
-                <AppInput
-                  label="VALOR (R$)"
-                  value={valor}
-                  onChangeText={setValor}
-                  placeholder="Ex: 1200,00"
-                  keyboardType="decimal-pad"
-                />
-
-                <AppInput
-                  label="DATA"
-                  value={data}
-                  onChangeText={setData}
-                  placeholder="AAAA-MM-DD"
-                />
-              </View>
-
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            contentContainerStyle={s.scrollContent}
+          >
+            <View style={s.toggle}>
               <TouchableOpacity
-                style={[s.saveBtn, saving && s.saveBtnDisabled]}
-                onPress={handleSave}
-                disabled={saving}
-                activeOpacity={0.85}
+                style={[s.toggleBtn, tipo === 'receita' && s.toggleBtnActive, isEditing && s.toggleBtnLocked]}
+                onPress={() => !isEditing && setTipo('receita')}
+                activeOpacity={isEditing ? 1 : 0.7}
               >
-                {saving
-                  ? <ActivityIndicator color={colors.onPrimary} />
-                  : <Text style={s.saveBtnText}>{isEditing ? 'SALVAR ALTERAÇÕES' : 'SALVAR TRANSAÇÃO'}</Text>
-                }
+                <Text style={[s.toggleText, tipo === 'receita' && s.toggleTextActive]}>
+                  💰 Receita
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-                <Text style={s.cancelText}>Cancelar</Text>
+              <TouchableOpacity
+                style={[s.toggleBtn, tipo === 'despesa' && s.toggleBtnActive, isEditing && s.toggleBtnLocked]}
+                onPress={() => !isEditing && setTipo('despesa')}
+                activeOpacity={isEditing ? 1 : 0.7}
+              >
+                <Text style={[s.toggleText, tipo === 'despesa' && s.toggleTextActive]}>
+                  📤 Despesa
+                </Text>
               </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+            </View>
+
+            <View style={s.fields}>
+              <AppInput
+                label="DESCRIÇÃO"
+                value={descricao}
+                onChangeText={setDescricao}
+                placeholder="Ex: Venda de leite"
+              />
+              <AppInput
+                label="VALOR (R$)"
+                value={valor}
+                onChangeText={setValor}
+                placeholder="Ex: 1200,00"
+                keyboardType="decimal-pad"
+              />
+              <AppInput
+                label="DATA"
+                value={data}
+                onChangeText={setData}
+                placeholder="AAAA-MM-DD"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[s.saveBtn, saving && s.saveBtnDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              {saving
+                ? <ActivityIndicator color={colors.onPrimary} />
+                : <Text style={s.saveBtnText}>{isEditing ? 'SALVAR ALTERAÇÕES' : 'SALVAR TRANSAÇÃO'}</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+              <Text style={s.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  backdrop: { flex: 1 },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
   sheet: {
     backgroundColor: colors.surfaceContainerLowest,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 24, maxHeight: '90%',
+    paddingTop: 12, paddingHorizontal: 24,
+    elevation: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
+  scrollContent: { paddingBottom: 32 },
   handle: {
     width: 40, height: 4, backgroundColor: colors.borderLight,
     borderRadius: 2, alignSelf: 'center', marginBottom: 20,

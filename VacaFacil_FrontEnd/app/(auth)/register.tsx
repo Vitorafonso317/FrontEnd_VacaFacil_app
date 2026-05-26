@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, SafeAreaView, StyleSheet,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -64,6 +65,7 @@ export default function Register() {
 
   return (
     <SafeAreaView style={s.safe}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         {/* Header com botão voltar */}
         <View style={s.header}>
@@ -145,6 +147,7 @@ export default function Register() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+    </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

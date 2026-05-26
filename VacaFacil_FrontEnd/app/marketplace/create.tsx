@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, StyleSheet, Image,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -139,7 +140,8 @@ export default function CriarAnuncio() {
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <MaterialIcons name="arrow-back" size={28} color={colors.primary} />
@@ -331,6 +333,7 @@ export default function CriarAnuncio() {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

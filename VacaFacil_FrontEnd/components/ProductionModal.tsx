@@ -127,7 +127,7 @@ export default function ProductionModal({ visible, onClose, onSaved, preSelected
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView
         style={s.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
       >
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
         <View style={[s.sheet, { maxHeight: SCREEN_H * 0.9 }]}>
